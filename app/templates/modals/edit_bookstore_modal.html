@@ -1,0 +1,204 @@
+<div class="modal fade" id="editBookstoreModal" tabindex="-1" aria-labelledby="editBookstoreModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="editBookstoreModalLabel">북스토어 수정</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="editBookstoreForm">
+          <input type="hidden" name="id" id="editBookstoreId">
+          <div class="mb-3">
+            <label for="editDisplayName" class="form-label">노출명 *</label>
+            <input type="text" class="form-control" id="editDisplayName" name="name" required>
+          </div>
+          <div class="mb-3">
+            <label for="editCategory" class="form-label">카테고리</label>
+            <input type="text" class="form-control" id="editCategory" name="category">
+          </div>
+          <div class="mb-3">
+            <label for="editOrder" class="form-label">다운로드 횟수</label>
+            <input type="number" class="form-control" id="editOrder" name="order" min="0">
+          </div>
+          <div class="mb-3">
+            <label for="editGem" class="form-label">보석</label>
+            <input type="number" class="form-control" id="editGem" name="gem" min="0" value="0">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">색상</label>
+            <div class="row">
+              <div class="col-4">
+                <label for="editColorMain" class="form-label small">Main</label>
+                <div class="input-group">
+                  <input type="color" class="form-control form-control-color" id="editColorMain" name="color_main" style="max-width: 50px;">
+                  <input type="text" class="form-control" id="editColorMainHex" placeholder="#FF8DD4" maxlength="7">
+                </div>
+                <div class="mt-1">
+                  <div id="editColorMainPreview" style="width: 100%; height: 20px; border-radius: 3px; border: 1px solid #ddd;"></div>
+                </div>
+              </div>
+              <div class="col-4">
+                <label for="editColorSub" class="form-label small">Sub</label>
+                <div class="input-group">
+                  <input type="color" class="form-control form-control-color" id="editColorSub" name="color_sub" style="max-width: 50px;">
+                  <input type="text" class="form-control" id="editColorSubHex" placeholder="#FFD2EF" maxlength="7">
+                </div>
+                <div class="mt-1">
+                  <div id="editColorSubPreview" style="width: 100%; height: 20px; border-radius: 3px; border: 1px solid #ddd;"></div>
+                </div>
+              </div>
+              <div class="col-4">
+                <label for="editColorBackground" class="form-label small">Background</label>
+                <div class="input-group">
+                  <input type="color" class="form-control form-control-color" id="editColorBackground" name="color_background" style="max-width: 50px;">
+                  <input type="text" class="form-control" id="editColorBackgroundHex" placeholder="#FFEFFA" maxlength="7">
+                </div>
+                <div class="mt-1">
+                  <div id="editColorBackgroundPreview" style="width: 100%; height: 20px; border-radius: 3px; border: 1px solid #ddd;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="mb-3">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="editIsVisible" name="is_visible">
+              <label class="form-check-label" for="editIsVisible">
+                공개
+              </label>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+        <button type="submit" class="btn btn-primary" form="editBookstoreForm">저장</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// 수정 모달에서 데이터 로드
+document.getElementById('editBookstoreModal').addEventListener('show.bs.modal', function (event) {
+    const button = event.relatedTarget;
+    const id = button.getAttribute('data-id');
+    
+    // 현재 행에서 데이터 가져오기
+    const row = button.closest('tr');
+    const name = row.cells[0].textContent.trim();
+    const category = row.cells[2].textContent.trim();
+    const isVisible = row.cells[3].textContent.trim() === '공개';
+    const gem = row.cells[4].textContent.trim();
+    const order = row.cells[5].textContent.trim();
+    
+    // 색상 데이터 가져오기 (data-color 속성에서)
+    const colorBoxes = row.cells[7].querySelectorAll('div[data-color]');
+    
+    // 무조건 3개의 색상이 JSON 형태로 저장되어 있음
+    const mainColor = colorBoxes[0]?.getAttribute('data-color') || '#000000';
+    const subColor = colorBoxes[1]?.getAttribute('data-color') || '#000000';
+    const backgroundColor = colorBoxes[2]?.getAttribute('data-color') || '#ffffff';
+    
+    // 폼에 데이터 설정
+    document.getElementById('editBookstoreId').value = id;
+    document.getElementById('editDisplayName').value = name;
+    document.getElementById('editCategory').value = category;
+    document.getElementById('editGem').value = gem;
+    document.getElementById('editOrder').value = order;
+    document.getElementById('editColorMain').value = mainColor;
+    document.getElementById('editColorSub').value = subColor;
+    document.getElementById('editColorBackground').value = backgroundColor;
+    document.getElementById('editIsVisible').checked = isVisible;
+    
+    // hex 입력 필드와 미리보기 업데이트
+    updateColorFields('editColorMain', mainColor);
+    updateColorFields('editColorSub', subColor);
+    updateColorFields('editColorBackground', backgroundColor);
+});
+
+// 수정 폼 제출
+document.getElementById('editBookstoreForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const id = document.getElementById('editBookstoreId').value;
+    
+    // 색상 값 가져오기 (빈 값이면 기본값 사용)
+    const mainColor = document.getElementById('editColorMain').value || '#000000';
+    const subColor = document.getElementById('editColorSub').value || '#000000';
+    const bgColor = document.getElementById('editColorBackground').value || '#ffffff';
+    
+    const data = {
+        name: document.getElementById('editDisplayName').value,
+        category: document.getElementById('editCategory').value,
+        gem: parseInt(document.getElementById('editGem').value) || 0,
+        order: parseInt(document.getElementById('editOrder').value),
+        color: {
+            main: mainColor,
+            sub: subColor,
+            background: bgColor
+        },
+        is_visible: document.getElementById('editIsVisible').checked
+    };
+    
+    try {
+        const response = await fetch(`/bookstore/api/bookstore/${id}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        
+        if (response.ok) {
+            location.reload();
+        } else {
+            alert('수정에 실패했습니다.');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('수정 중 오류가 발생했습니다.');
+    }
+});
+
+// 색상 필드 업데이트 함수
+function updateColorFields(prefix, color) {
+    const colorInput = document.getElementById(prefix);
+    const hexInput = document.getElementById(prefix + 'Hex');
+    const preview = document.getElementById(prefix + 'Preview');
+    
+    // 항상 색상 설정 (기본값이라도 있음)
+    colorInput.value = color;
+    hexInput.value = color;
+    preview.style.backgroundColor = color;
+}
+
+// 색상 입력 이벤트 리스너
+function setupColorListeners(prefix) {
+    const colorInput = document.getElementById(prefix);
+    const hexInput = document.getElementById(prefix + 'Hex');
+    const preview = document.getElementById(prefix + 'Preview');
+    
+    // color picker 변경 시
+    colorInput.addEventListener('input', function() {
+        hexInput.value = this.value;
+        preview.style.backgroundColor = this.value;
+    });
+    
+    // hex 입력 시
+    hexInput.addEventListener('input', function() {
+        let value = this.value;
+        if (!value.startsWith('#')) {
+            value = '#' + value;
+        }
+        if (/^#[0-9A-Fa-f]{6}$/.test(value)) {
+            colorInput.value = value;
+            preview.style.backgroundColor = value;
+        }
+    });
+}
+
+// 이벤트 리스너 설정
+setupColorListeners('editColorMain');
+setupColorListeners('editColorSub');
+setupColorListeners('editColorBackground');
+</script> 

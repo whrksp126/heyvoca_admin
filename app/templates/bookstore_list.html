@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+{% block title %}북스토어 관리{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>북스토어 관리</h2>
+    <!-- <a href="{{ url_for('bookstore.voca_books_list') }}" class="btn btn-primary">+ 단어장 등록</a> -->
+</div>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>노출명</th>
+            <th>원본 단어장</th>
+            <th>카테고리</th>
+            <th>공개 여부</th>
+            <th>보석</th>
+            <th>다운로드 횟수</th>
+            <th>등록일</th>
+            <th>색상</th>
+            <th>수정</th>
+            <th>삭제</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for bookstore in bookstores %}
+        <tr>
+            <td>{{ bookstore.name }}</td>
+            <td>{{ bookstore.voca_book.book_nm if bookstore.voca_book else 'N/A' }}</td>
+            <td>{{ bookstore.category }}</td>
+            <td>
+                <span class="badge {% if bookstore.hide == 'N' %}bg-success{% else %}bg-secondary{% endif %}">
+                    {{ '공개' if bookstore.hide == 'N' else '비공개' }}
+                </span>
+            </td>
+            <td>{{ bookstore.gem }}</td>
+            <td>{{ bookstore.downloads }}</td>
+            <td>{{ bookstore.created_at.strftime('%Y-%m-%d') if bookstore.created_at else '-' }}</td>
+            <td>
+                {% if bookstore.color %}
+                <div id="color-display-{{ loop.index }}" class="d-flex gap-1">
+                    <!-- JavaScript로 동적 생성 -->
+                </div>
+                <script>
+                    (function() {
+                        try {
+                            // color는 항상 JSON 형태: {"main":"#xxx", "sub":"#xxx", "background":"#xxx"}
+                            var colorDataRaw = {{ bookstore.color | tojson }};
+                            var colorData = typeof colorDataRaw === 'string' ? JSON.parse(colorDataRaw) : colorDataRaw;
+                            var container = document.getElementById('color-display-{{ loop.index }}');
+                            
+                            // 무조건 3개 색상 표시
+                            container.innerHTML = 
+                                '<div style="width: 20px; height: 20px; background-color: ' + colorData.main + '; border-radius: 3px;" title="Main: ' + colorData.main + '" data-color="' + colorData.main + '"></div>' +
+                                '<div style="width: 20px; height: 20px; background-color: ' + colorData.sub + '; border-radius: 3px;" title="Sub: ' + colorData.sub + '" data-color="' + colorData.sub + '"></div>' +
+                                '<div style="width: 20px; height: 20px; background-color: ' + colorData.background + '; border-radius: 3px;" title="Background: ' + colorData.background + '" data-color="' + colorData.background + '"></div>';
+                        } catch(e) {
+                            console.error('Color parsing error:', e);
+                            var container = document.getElementById('color-display-{{ loop.index }}');
+                            container.innerHTML = '<span class="text-danger">색상 오류</span>';
+                        }
+                    })();
+                </script>
+                {% endif %}
+            </td>
+            <td><button class="btn btn-sm btn-primary" data-id="{{ bookstore.id }}" data-bs-toggle="modal" data-bs-target="#editBookstoreModal">수정</button></td>
+            <td><button class="btn btn-sm btn-danger" data-id="{{ bookstore.id }}">삭제</button></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- edit bookstore modal은 별도 템플릿에서 include 예정 -->
+{% include 'modals/edit_bookstore_modal.html' %}
+
+<script>
+// 삭제 버튼 이벤트
+document.querySelectorAll('.btn-danger[data-id]').forEach(btn => {
+    btn.addEventListener('click', async function() {
+        if (!confirm('정말 삭제하시겠습니까?')) return;
+        
+        const id = btn.getAttribute('data-id');
+        try {
+            const response = await fetch(`/bookstore/api/bookstore/${id}`, {
+                method: 'DELETE'
+            });
+            
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert('삭제에 실패했습니다.');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('삭제 중 오류가 발생했습니다.');
+        }
+    });
+});
+</script>
+{% endblock %} 

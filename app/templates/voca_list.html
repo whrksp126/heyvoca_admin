@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% block title %}단어장 목록{% endblock %}
+{% block content %}
+<h2>단어장 목록</h2>
+<form class="row g-3 mb-3" method="get">
+    <div class="col-auto">
+        <input type="text" class="form-control" name="q" placeholder="단어장명 검색" value="{{ request.args.q }}">
+    </div>
+    <div class="col-auto">
+        <select class="form-select" name="category">
+            <option value="">전체 카테고리</option>
+            {% for category in ['수능', '토익', '토플', '일상', '비즈니스'] %}
+            <option value="{{ category }}" {% if request.args.category == category %}selected{% endif %}>{{ category }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-secondary">검색</button>
+    </div>
+</form>
+
+<div class="row">
+    {% for voca_book in voca_books %}
+    <div class="col-md-6 col-lg-4 mb-3">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">{{ voca_book.book_nm }}</h5>
+                <p class="card-text">
+                    <small class="text-muted">
+                        언어: {{ voca_book.language }}<br>
+                        출처: {{ voca_book.source }}<br>
+                        {% if voca_book.category %}카테고리: {{ voca_book.category }}<br>{% endif %}
+                        {% if voca_book.word_count %}단어 수: {{ voca_book.word_count }}<br>{% endif %}
+                        {% if voca_book.updated_at %}업데이트: {{ voca_book.updated_at.strftime('%Y-%m-%d') }}<br>{% endif %}
+                    </small>
+                </p>
+                <div class="btn-group" role="group">
+                    <button class="btn btn-sm btn-primary" data-id="{{ voca_book.id }}" data-bs-toggle="modal" data-bs-target="#editVocaBookModal">수정</button>
+                    <button class="btn btn-sm btn-danger" data-id="{{ voca_book.id }}">삭제</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- edit voca book modal은 별도 템플릿에서 include 예정 -->
+{% include 'modals/edit_voca_book_modal.html' %}
+
+<script>
+// 삭제 버튼 이벤트
+document.querySelectorAll('.btn-danger[data-id]').forEach(btn => {
+    btn.addEventListener('click', async function() {
+        if (!confirm('정말 삭제하시겠습니까?')) return;
+        
+        const id = btn.getAttribute('data-id');
+        try {
+            const response = await fetch(`/voca/api/voca/${id}`, {
+                method: 'DELETE'
+            });
+            
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert('삭제에 실패했습니다.');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('삭제 중 오류가 발생했습니다.');
+        }
+    });
+});
+</script>
+{% endblock %} 

@@ -1,0 +1,104 @@
+<div class="modal fade" id="addBookstoreModal" tabindex="-1" aria-labelledby="addBookstoreModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="addBookstoreModalLabel">북스토어 추가</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="addBookstoreForm">
+          <div class="mb-3">
+            <label for="bookstoreName" class="form-label">단어장명</label>
+            <input type="text" class="form-control" id="bookstoreName" name="name" required>
+          </div>
+          <div class="mb-3">
+            <label for="bookstoreIsPublic" class="form-label">공개 여부</label>
+            <select class="form-select" id="bookstoreIsPublic" name="is_public">
+              <option value="1">공개</option>
+              <option value="0">비공개</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="bookstoreOrder" class="form-label">다운로드 횟수</label>
+            <input type="number" class="form-control" id="bookstoreOrder" name="order" min="1" required>
+          </div>
+          <div class="mb-3">
+            <label for="bookstoreGem" class="form-label">보석</label>
+            <input type="number" class="form-control" id="bookstoreGem" name="gem" min="0" value="0">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">색상</label>
+            <div class="row">
+              <div class="col-4">
+                <label for="addColorMain" class="form-label small">Main</label>
+                <div class="input-group">
+                  <input type="color" class="form-control form-control-color" id="addColorMain" name="color_main" value="#FF8DD4" style="max-width: 50px;">
+                  <input type="text" class="form-control" id="addColorMainHex" placeholder="#FF8DD4" maxlength="7" value="#FF8DD4">
+                </div>
+                <div class="mt-1">
+                  <div id="addColorMainPreview" style="width: 100%; height: 20px; border-radius: 3px; border: 1px solid #ddd; background-color: #FF8DD4;"></div>
+                </div>
+              </div>
+              <div class="col-4">
+                <label for="addColorSub" class="form-label small">Sub</label>
+                <div class="input-group">
+                  <input type="color" class="form-control form-control-color" id="addColorSub" name="color_sub" value="#FFD2EF" style="max-width: 50px;">
+                  <input type="text" class="form-control" id="addColorSubHex" placeholder="#FFD2EF" maxlength="7" value="#FFD2EF">
+                </div>
+                <div class="mt-1">
+                  <div id="addColorSubPreview" style="width: 100%; height: 20px; border-radius: 3px; border: 1px solid #ddd; background-color: #FFD2EF;"></div>
+                </div>
+              </div>
+              <div class="col-4">
+                <label for="addColorBackground" class="form-label small">Background</label>
+                <div class="input-group">
+                  <input type="color" class="form-control form-control-color" id="addColorBackground" name="color_background" value="#FFEFFA" style="max-width: 50px;">
+                  <input type="text" class="form-control" id="addColorBackgroundHex" placeholder="#FFEFFA" maxlength="7" value="#FFEFFA">
+                </div>
+                <div class="mt-1">
+                  <div id="addColorBackgroundPreview" style="width: 100%; height: 20px; border-radius: 3px; border: 1px solid #ddd; background-color: #FFEFFA;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+        <button type="submit" class="btn btn-primary" form="addBookstoreForm">추가</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// 색상 입력 이벤트 리스너
+function setupAddColorListeners(prefix) {
+    const colorInput = document.getElementById(prefix);
+    const hexInput = document.getElementById(prefix + 'Hex');
+    const preview = document.getElementById(prefix + 'Preview');
+    
+    // color picker 변경 시
+    colorInput.addEventListener('input', function() {
+        hexInput.value = this.value;
+        preview.style.backgroundColor = this.value;
+    });
+    
+    // hex 입력 시
+    hexInput.addEventListener('input', function() {
+        let value = this.value;
+        if (!value.startsWith('#')) {
+            value = '#' + value;
+        }
+        if (/^#[0-9A-Fa-f]{6}$/.test(value)) {
+            colorInput.value = value;
+            preview.style.backgroundColor = value;
+        }
+    });
+}
+
+// 이벤트 리스너 설정
+setupAddColorListeners('addColorMain');
+setupAddColorListeners('addColorSub');
+setupAddColorListeners('addColorBackground');
+</script> 

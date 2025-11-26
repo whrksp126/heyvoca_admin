@@ -1,0 +1,443 @@
+{% extends 'base.html' %}
+{% block title %}단어장 등록{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>단어장 등록</h2>
+    <a href="{{ url_for('bookstore.bookstore_list') }}" class="btn btn-secondary">북스토어 목록으로</a>
+</div>
+
+<!-- 검색 및 필터 -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-4">
+                <label for="search" class="form-label">단어장명 검색</label>
+                <input type="text" class="form-control" id="search" name="search" value="{{ search }}" placeholder="단어장명을 입력하세요">
+            </div>
+            <div class="col-md-3">
+                <label for="category" class="form-label">카테고리</label>
+                <select class="form-select" id="category" name="category">
+                    <option value="">전체</option>
+                    <option value="수능" {% if category == '수능' %}selected{% endif %}>수능</option>
+                    <option value="토익" {% if category == '토익' %}selected{% endif %}>토익</option>
+                    <option value="토플" {% if category == '토플' %}selected{% endif %}>토플</option>
+                    <option value="일상" {% if category == '일상' %}selected{% endif %}>일상</option>
+                    <option value="비즈니스" {% if category == '비즈니스' %}selected{% endif %}>비즈니스</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="status" class="form-label">등록 상태</label>
+                <select class="form-select" id="status" name="status">
+                    <option value="">전체</option>
+                    <option value="registered" {% if status == 'registered' %}selected{% endif %}>등록됨</option>
+                    <option value="unregistered" {% if status == 'unregistered' %}selected{% endif %}>미등록</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <div class="d-grid gap-2 w-100">
+                    <button type="submit" class="btn btn-primary">검색</button>
+                    <a href="{{ url_for('bookstore.voca_books_list') }}" class="btn btn-outline-secondary">초기화</a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 결과 통계 -->
+<div class="mb-3">
+    <small class="text-muted">
+        총 {{ pagination.total }}개 중 {{ (pagination.page - 1) * pagination.per_page + 1 }}-{{ pagination.page * pagination.per_page if pagination.page * pagination.per_page < pagination.total else pagination.total }}개 표시
+    </small>
+</div>
+
+<div class="row">
+    {% for voca_book in voca_books %}
+    <div class="col-md-6 col-lg-4 mb-3">
+        <div class="card {% if voca_book.is_registered %}border-success{% endif %}">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <h5 class="card-title mb-0">{{ voca_book.book_nm }}</h5>
+                    {% if voca_book.is_registered %}
+                    <span class="badge bg-success">등록됨</span>
+                    {% endif %}
+                </div>
+                <p class="card-text">
+                    <small class="text-muted">
+                        언어: {{ voca_book.language }}<br>
+                        출처: {{ voca_book.source }}<br>
+                        {% if voca_book.category %}카테고리: {{ voca_book.category }}<br>{% endif %}
+                        {% if voca_book.word_count %}단어 수: {{ voca_book.word_count }}<br>{% endif %}
+                        {% if voca_book.is_registered %}
+                        <strong>노출명: {{ voca_book.bookstore_name }}</strong><br>
+                        {% endif %}
+                    </small>
+                </p>
+                
+                {% if voca_book.is_registered %}
+                <!-- 이미 등록된 경우: 수정/삭제 버튼 -->
+                <div class="btn-group" role="group">
+                    <button class="btn btn-warning btn-sm" 
+                            data-bs-toggle="modal" 
+                            data-bs-target="#editBookstoreModal"
+                            data-bookstore-id="{{ voca_book.bookstore_id }}"
+                            data-book-id="{{ voca_book.id }}"
+                            data-book-name="{{ voca_book.book_nm }}"
+                            data-display-name="{{ voca_book.bookstore_name }}">
+                        수정
+                    </button>
+                    <button class="btn btn-danger btn-sm" 
+                            data-bookstore-id="{{ voca_book.bookstore_id }}">
+                        삭제
+                    </button>
+                </div>
+                {% else %}
+                <!-- 등록되지 않은 경우: 등록 버튼 -->
+                <button class="btn btn-primary btn-sm" 
+                        data-bs-toggle="modal" 
+                        data-bs-target="#addBookstoreModal"
+                        data-book-id="{{ voca_book.id }}"
+                        data-book-name="{{ voca_book.book_nm }}">
+                    북스토어에 등록
+                </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- 페이지네이션 -->
+{% if pagination.pages > 1 %}
+<nav aria-label="페이지 네비게이션" class="mt-4">
+    <ul class="pagination justify-content-center">
+        <!-- 이전 페이지 -->
+        {% if pagination.has_prev %}
+        <li class="page-item">
+            <a class="page-link" href="{{ url_for('bookstore.voca_books_list', page=pagination.prev_num, search=search, category=category, status=status) }}">이전</a>
+        </li>
+        {% else %}
+        <li class="page-item disabled">
+            <span class="page-link">이전</span>
+        </li>
+        {% endif %}
+        
+        <!-- 페이지 번호들 -->
+        {% for page_num in pagination.iter_pages(left_edge=2, left_current=2, right_current=3, right_edge=2) %}
+            {% if page_num %}
+                {% if page_num != pagination.page %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('bookstore.voca_books_list', page=page_num, search=search, category=category, status=status) }}">{{ page_num }}</a>
+                </li>
+                {% else %}
+                <li class="page-item active">
+                    <span class="page-link">{{ page_num }}</span>
+                </li>
+                {% endif %}
+            {% else %}
+            <li class="page-item disabled">
+                <span class="page-link">...</span>
+            </li>
+            {% endif %}
+        {% endfor %}
+        
+        <!-- 다음 페이지 -->
+        {% if pagination.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="{{ url_for('bookstore.voca_books_list', page=pagination.next_num, search=search, category=category, status=status) }}">다음</a>
+        </li>
+        {% else %}
+        <li class="page-item disabled">
+            <span class="page-link">다음</span>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+<!-- 북스토어 등록 모달 -->
+<div class="modal fade" id="addBookstoreModal" tabindex="-1" aria-labelledby="addBookstoreModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addBookstoreModalLabel">북스토어에 단어장 등록</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addBookstoreForm">
+                    <input type="hidden" name="book_id" id="selectedBookId">
+                    <div class="mb-3">
+                        <label for="displayName" class="form-label">노출명 *</label>
+                        <input type="text" class="form-control" id="displayName" name="name" required>
+                        <div class="form-text">유저에게 보여질 단어장명을 입력하세요 (예: "수능특강 어휘")</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="category" class="form-label">카테고리</label>
+                        <input type="text" class="form-control" id="category" name="category">
+                    </div>
+                    <div class="mb-3">
+                        <label for="levelId" class="form-label">레벨 *</label>
+                        <select class="form-select" id="levelId" name="level_id" required>
+                            <option value="">레벨 선택</option>
+                            {% for level in levels %}
+                            <option value="{{ level.id }}" data-level-name="{{ level.level_name }}">{{ level.level_description }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="gem" class="form-label">보석</label>
+                        <input type="number" class="form-control" id="gem" name="gem" value="0" min="0">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">색상</label>
+                        <div class="row">
+                            <div class="col-4">
+                                <label for="colorMain" class="form-label small">Main</label>
+                                <div class="input-group">
+                                    <input type="color" class="form-control form-control-color" id="colorMain" name="color_main" value="#FF8DD4" style="max-width: 50px;">
+                                    <input type="text" class="form-control" id="colorMainHex" placeholder="#FF8DD4" maxlength="7" value="#FF8DD4">
+                                </div>
+                                <div class="mt-1">
+                                    <div id="colorMainPreview" style="width: 100%; height: 20px; border-radius: 3px; border: 1px solid #ddd; background-color: #FF8DD4;"></div>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <label for="colorSub" class="form-label small">Sub</label>
+                                <div class="input-group">
+                                    <input type="color" class="form-control form-control-color" id="colorSub" name="color_sub" value="#FFD2EF" style="max-width: 50px;">
+                                    <input type="text" class="form-control" id="colorSubHex" placeholder="#FFD2EF" maxlength="7" value="#FFD2EF">
+                                </div>
+                                <div class="mt-1">
+                                    <div id="colorSubPreview" style="width: 100%; height: 20px; border-radius: 3px; border: 1px solid #ddd; background-color: #FFD2EF;"></div>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <label for="colorBackground" class="form-label small">Background</label>
+                                <div class="input-group">
+                                    <input type="color" class="form-control form-control-color" id="colorBackground" name="color_background" value="#FFEFFA" style="max-width: 50px;">
+                                    <input type="text" class="form-control" id="colorBackgroundHex" placeholder="#FFEFFA" maxlength="7" value="#FFEFFA">
+                                </div>
+                                <div class="mt-1">
+                                    <div id="colorBackgroundPreview" style="width: 100%; height: 20px; border-radius: 3px; border: 1px solid #ddd; background-color: #FFEFFA;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="isVisible" name="is_visible" checked>
+                            <label class="form-check-label" for="isVisible">
+                                공개
+                            </label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                <button type="submit" class="btn btn-primary" form="addBookstoreForm">등록</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 북스토어 수정 모달 -->
+<div class="modal fade" id="editBookstoreModal" tabindex="-1" aria-labelledby="editBookstoreModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editBookstoreModalLabel">북스토어 수정</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editBookstoreForm">
+                    <input type="hidden" name="bookstore_id" id="editBookstoreId">
+                    <input type="hidden" name="book_id" id="editBookId">
+                    <div class="mb-3">
+                        <label for="editDisplayName" class="form-label">노출명 *</label>
+                        <input type="text" class="form-control" id="editDisplayName" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editCategory" class="form-label">카테고리</label>
+                        <input type="text" class="form-control" id="editCategory" name="category">
+                    </div>
+                    <div class="mb-3">
+                        <label for="editOrder" class="form-label">정렬 순서</label>
+                        <input type="number" class="form-control" id="editOrder" name="order" min="0">
+                    </div>
+                    <div class="mb-3">
+                        <label for="editColor" class="form-label">색상</label>
+                        <input type="color" class="form-control form-control-color" id="editColor" name="color">
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="editIsVisible" name="is_visible">
+                            <label class="form-check-label" for="editIsVisible">
+                                공개
+                            </label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                <button type="submit" class="btn btn-primary" form="editBookstoreForm">저장</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 등록 모달에서 단어장 선택 시 원본 단어장명 표시
+document.getElementById('addBookstoreModal').addEventListener('show.bs.modal', function (event) {
+    const button = event.relatedTarget;
+    const bookId = button.getAttribute('data-book-id');
+    const bookName = button.getAttribute('data-book-name');
+    
+    document.getElementById('selectedBookId').value = bookId;
+    document.getElementById('displayName').value = bookName;
+});
+
+// 수정 모달에서 데이터 로드
+document.getElementById('editBookstoreModal').addEventListener('show.bs.modal', function (event) {
+    const button = event.relatedTarget;
+    const bookstoreId = button.getAttribute('data-bookstore-id');
+    const bookId = button.getAttribute('data-book-id');
+    const bookName = button.getAttribute('data-book-name');
+    const displayName = button.getAttribute('data-display-name');
+    
+    document.getElementById('editBookstoreId').value = bookstoreId;
+    document.getElementById('editBookId').value = bookId;
+    document.getElementById('editDisplayName').value = displayName;
+});
+
+// 북스토어 등록 폼 제출
+document.getElementById('addBookstoreForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const levelSelect = document.getElementById('levelId');
+    const levelName = levelSelect.selectedOptions[0]?.getAttribute('data-level-name') || null;
+    
+    const data = {
+        book_id: parseInt(formData.get('book_id')),
+        name: formData.get('name'),
+        category: formData.get('category'),
+        level_id: parseInt(formData.get('level_id')),
+        level_name: levelName,
+        gem: parseInt(formData.get('gem')) || 0,
+        color: {
+            main: formData.get('color_main'),
+            sub: formData.get('color_sub'),
+            background: formData.get('color_background')
+        },
+        is_visible: formData.get('is_visible') === 'on'
+    };
+    
+    try {
+        const response = await fetch('/bookstore/api/bookstore', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        
+        if (response.ok) {
+            alert('북스토어에 성공적으로 등록되었습니다.');
+            location.reload();
+        } else {
+            alert('등록에 실패했습니다.');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('등록 중 오류가 발생했습니다.');
+    }
+});
+
+// 북스토어 수정 폼 제출
+document.getElementById('editBookstoreForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const bookstoreId = document.getElementById('editBookstoreId').value;
+    const data = {
+        name: document.getElementById('editDisplayName').value,
+        category: document.getElementById('editCategory').value,
+        order: parseInt(document.getElementById('editOrder').value),
+        color: document.getElementById('editColor').value,
+        is_visible: document.getElementById('editIsVisible').checked
+    };
+    
+    try {
+        const response = await fetch(`/bookstore/api/bookstore/${bookstoreId}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        
+        if (response.ok) {
+            location.reload();
+        } else {
+            alert('수정에 실패했습니다.');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('수정 중 오류가 발생했습니다.');
+    }
+});
+
+// 삭제 버튼 이벤트
+document.querySelectorAll('.btn-danger[data-bookstore-id]').forEach(btn => {
+    btn.addEventListener('click', async function() {
+        if (!confirm('정말 삭제하시겠습니까?')) return;
+        
+        const bookstoreId = btn.getAttribute('data-bookstore-id');
+        try {
+            const response = await fetch(`/bookstore/api/bookstore/${bookstoreId}`, {
+                method: 'DELETE'
+            });
+            
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert('삭제에 실패했습니다.');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('삭제 중 오류가 발생했습니다.');
+        }
+    });
+});
+
+// 색상 입력 이벤트 리스너
+function setupVocaColorListeners(prefix) {
+    const colorInput = document.getElementById(prefix);
+    const hexInput = document.getElementById(prefix + 'Hex');
+    const preview = document.getElementById(prefix + 'Preview');
+    
+    // color picker 변경 시
+    colorInput.addEventListener('input', function() {
+        hexInput.value = this.value;
+        preview.style.backgroundColor = this.value;
+    });
+    
+    // hex 입력 시
+    hexInput.addEventListener('input', function() {
+        let value = this.value;
+        if (!value.startsWith('#')) {
+            value = '#' + value;
+        }
+        if (/^#[0-9A-Fa-f]{6}$/.test(value)) {
+            colorInput.value = value;
+            preview.style.backgroundColor = value;
+        }
+    });
+}
+
+// 이벤트 리스너 설정
+setupVocaColorListeners('colorMain');
+setupVocaColorListeners('colorSub');
+setupVocaColorListeners('colorBackground');
+</script>
+{% endblock %} 

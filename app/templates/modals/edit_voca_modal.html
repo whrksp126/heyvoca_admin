@@ -1,0 +1,39 @@
+<div class="modal fade" id="editVocaModal" tabindex="-1" aria-labelledby="editVocaModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="editVocaModalLabel">단어 수정</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="editVocaForm">
+          <input type="hidden" name="id" id="editVocaId">
+          <div class="mb-3">
+            <label for="editVocaWord" class="form-label">단어</label>
+            <input type="text" class="form-control" id="editVocaWord" name="word" required>
+          </div>
+          <div class="mb-3">
+            <label for="editVocaMeaning" class="form-label">의미</label>
+            <input type="text" class="form-control" id="editVocaMeaning" name="meaning" required>
+          </div>
+          <div class="mb-3">
+            <label for="editVocaExample" class="form-label">예문</label>
+            <input type="text" class="form-control" id="editVocaExample" name="example">
+          </div>
+          <div class="mb-3">
+            <label for="editVocaLevel" class="form-label">레벨</label>
+            <select class="form-select" id="editVocaLevel" name="level">
+              {% for l in [1,2,3,4,5] %}
+              <option value="{{ l }}">{{ l }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+        <button type="submit" class="btn btn-primary" form="editVocaForm">저장</button>
+      </div>
+    </div>
+  </div>
+</div> 
