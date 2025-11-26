@@ -100,7 +100,6 @@ def update_bookstore(bookstore_id):
     print(data)
     bookstore = Bookstore.query.get_or_404(bookstore_id)
     bookstore.name = data.get('name', bookstore.name)
-    bookstore.downloads = data.get('order', bookstore.downloads)  # downloads 필드를 정렬 순서로 활용
     bookstore.category = data.get('category', bookstore.category)
     
     # color 처리: 딕셔너리면 JSON 문자열로 변환, 없으면 기존 값 유지

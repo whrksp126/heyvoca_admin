@@ -17,10 +17,6 @@
             <input type="text" class="form-control" id="editCategory" name="category">
           </div>
           <div class="mb-3">
-            <label for="editOrder" class="form-label">다운로드 횟수</label>
-            <input type="number" class="form-control" id="editOrder" name="order" min="0">
-          </div>
-          <div class="mb-3">
             <label for="editGem" class="form-label">보석</label>
             <input type="number" class="form-control" id="editGem" name="gem" min="0" value="0">
           </div>
@@ -89,7 +85,6 @@ document.getElementById('editBookstoreModal').addEventListener('show.bs.modal', 
     const category = row.cells[2].textContent.trim();
     const isVisible = row.cells[3].textContent.trim() === '공개';
     const gem = row.cells[4].textContent.trim();
-    const order = row.cells[5].textContent.trim();
     
     // 색상 데이터 가져오기 (data-color 속성에서)
     const colorBoxes = row.cells[7].querySelectorAll('div[data-color]');
@@ -104,7 +99,6 @@ document.getElementById('editBookstoreModal').addEventListener('show.bs.modal', 
     document.getElementById('editDisplayName').value = name;
     document.getElementById('editCategory').value = category;
     document.getElementById('editGem').value = gem;
-    document.getElementById('editOrder').value = order;
     document.getElementById('editColorMain').value = mainColor;
     document.getElementById('editColorSub').value = subColor;
     document.getElementById('editColorBackground').value = backgroundColor;
@@ -131,7 +125,6 @@ document.getElementById('editBookstoreForm').addEventListener('submit', async fu
         name: document.getElementById('editDisplayName').value,
         category: document.getElementById('editCategory').value,
         gem: parseInt(document.getElementById('editGem').value) || 0,
-        order: parseInt(document.getElementById('editOrder').value),
         color: {
             main: mainColor,
             sub: subColor,
