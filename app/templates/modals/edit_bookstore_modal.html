@@ -13,8 +13,17 @@
             <input type="text" class="form-control" id="editDisplayName" name="name" required>
           </div>
           <div class="mb-3">
-            <label for="editCategory" class="form-label">카테고리</label>
-            <input type="text" class="form-control" id="editCategory" name="category">
+            <label class="form-label">카테고리 (다중 선택 가능)</label>
+            <div id="editCategoryCheckboxes" class="border rounded p-2" style="max-height: 150px; overflow-y: auto;">
+              {% for category in categories %}
+              <div class="form-check">
+                <input class="form-check-input edit-category-checkbox" type="checkbox" value="{{ category.id }}" id="editCategory{{ category.id }}">
+                <label class="form-check-label" for="editCategory{{ category.id }}">
+                  {{ category.category }}
+                </label>
+              </div>
+              {% endfor %}
+            </div>
           </div>
           <div class="mb-3">
             <label for="editGem" class="form-label">보석</label>
@@ -82,9 +91,11 @@ document.getElementById('editBookstoreModal').addEventListener('show.bs.modal', 
     // 현재 행에서 데이터 가져오기
     const row = button.closest('tr');
     const name = row.cells[0].textContent.trim();
-    const category = row.cells[2].textContent.trim();
     const isVisible = row.cells[3].textContent.trim() === '공개';
     const gem = row.cells[4].textContent.trim();
+    
+    // 카테고리 IDs 가져오기
+    const categoryIds = JSON.parse(row.getAttribute('data-category-ids') || '[]');
     
     // 색상 데이터 가져오기 (data-color 속성에서)
     const colorBoxes = row.cells[7].querySelectorAll('div[data-color]');
@@ -97,12 +108,16 @@ document.getElementById('editBookstoreModal').addEventListener('show.bs.modal', 
     // 폼에 데이터 설정
     document.getElementById('editBookstoreId').value = id;
     document.getElementById('editDisplayName').value = name;
-    document.getElementById('editCategory').value = category;
     document.getElementById('editGem').value = gem;
     document.getElementById('editColorMain').value = mainColor;
     document.getElementById('editColorSub').value = subColor;
     document.getElementById('editColorBackground').value = backgroundColor;
     document.getElementById('editIsVisible').checked = isVisible;
+    
+    // 카테고리 체크박스 설정
+    document.querySelectorAll('.edit-category-checkbox').forEach(checkbox => {
+        checkbox.checked = categoryIds.includes(parseInt(checkbox.value));
+    });
     
     // hex 입력 필드와 미리보기 업데이트
     updateColorFields('editColorMain', mainColor);
@@ -121,9 +136,15 @@ document.getElementById('editBookstoreForm').addEventListener('submit', async fu
     const subColor = document.getElementById('editColorSub').value || '#000000';
     const bgColor = document.getElementById('editColorBackground').value || '#ffffff';
     
+    // 선택된 카테고리 IDs 가져오기
+    const categoryIds = [];
+    document.querySelectorAll('.edit-category-checkbox:checked').forEach(checkbox => {
+        categoryIds.push(parseInt(checkbox.value));
+    });
+    
     const data = {
         name: document.getElementById('editDisplayName').value,
-        category: document.getElementById('editCategory').value,
+        category_ids: categoryIds,
         gem: parseInt(document.getElementById('editGem').value) || 0,
         color: {
             main: mainColor,

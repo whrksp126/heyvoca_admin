@@ -23,10 +23,10 @@
     </thead>
     <tbody>
         {% for bookstore in bookstores %}
-        <tr>
+        <tr data-category-ids="{{ bookstore.category_ids | tojson }}">
             <td>{{ bookstore.name }}</td>
             <td>{{ bookstore.voca_book.book_nm if bookstore.voca_book else 'N/A' }}</td>
-            <td>{{ bookstore.category }}</td>
+            <td>{{ bookstore.category_list }}</td>
             <td>
                 <span class="badge {% if bookstore.hide == 'N' %}bg-success{% else %}bg-secondary{% endif %}">
                     {{ '공개' if bookstore.hide == 'N' else '비공개' }}

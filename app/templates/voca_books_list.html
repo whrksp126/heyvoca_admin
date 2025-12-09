@@ -3,7 +3,12 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h2>단어장 등록</h2>
-    <a href="{{ url_for('bookstore.bookstore_list') }}" class="btn btn-secondary">북스토어 목록으로</a>
+    <div>
+        <button type="button" class="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#addVocaBookModal">
+            <i class="bi bi-plus-lg"></i> 단어장 추가
+        </button>
+        <a href="{{ url_for('bookstore.bookstore_list') }}" class="btn btn-secondary">북스토어 목록으로</a>
+    </div>
 </div>
 
 <!-- 검색 및 필터 -->
@@ -286,6 +291,94 @@
     </div>
 </div>
 
+<!-- 단어장 추가 모달 -->
+<div class="modal fade" id="addVocaBookModal" tabindex="-1" aria-labelledby="addVocaBookModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addVocaBookModalLabel">새 단어장 추가</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addVocaBookForm" enctype="multipart/form-data">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="vocaBookName" class="form-label">단어장 이름 *</label>
+                            <input type="text" class="form-control" id="vocaBookName" name="book_nm" required placeholder="예: 토익 필수 어휘 1000">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="vocaBookLanguage" class="form-label">언어 *</label>
+                            <select class="form-select" id="vocaBookLanguage" name="language" required>
+                                <option value="">선택하세요</option>
+                                <option value="영어">영어</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="vocaBookSource" class="form-label">소스(출처) *</label>
+                            <input type="text" class="form-control" id="vocaBookSource" name="source" required placeholder="예: EBS, 해커스, 직접 제작">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="vocaBookCategory" class="form-label">카테고리</label>
+                            <select class="form-select" id="vocaBookCategory" name="category">
+                                <option value="">선택하세요</option>
+                                <option value="수능">수능</option>
+                                <option value="토익">토익</option>
+                                <option value="토플">토플</option>
+                                <option value="일상">일상</option>
+                                <option value="비즈니스">비즈니스</option>
+                                <option value="기타">기타</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="vocaBookUsername" class="form-label">작성자</label>
+                        <input type="text" class="form-control" id="vocaBookUsername" name="username" placeholder="예: 관리자">
+                    </div>
+                    
+                    <hr class="my-4">
+                    
+                    <div class="mb-3">
+                        <label for="excelFile" class="form-label">엑셀 파일 업로드 *</label>
+                        <input type="file" class="form-control" id="excelFile" name="excel_file" accept=".xlsx,.xls" required>
+                        <div class="form-text">
+                            <strong>엑셀 형식:</strong> 단어 | 뜻(콤마로 구분) | 예문1 | 예문뜻1 | 예문2 | 예문뜻2 | ...
+                            <br>
+                            <small class="text-muted">
+                                • 첫 번째 열: 단어<br>
+                                • 두 번째 열: 뜻 (여러 개일 경우 콤마로 구분, 예: "사과, 과일의 일종")<br>
+                                • 세 번째 열 이후: 예문과 예문 뜻이 쌍으로 반복
+                            </small>
+                        </div>
+                    </div>
+                    
+                    <!-- 파일 미리보기 영역 -->
+                    <div id="filePreview" class="mb-3" style="display: none;">
+                        <label class="form-label">파일 미리보기</label>
+                        <div class="table-responsive" style="max-height: 200px; overflow-y: auto;">
+                            <table class="table table-sm table-bordered" id="previewTable">
+                                <thead class="table-light">
+                                    <tr id="previewHeader"></tr>
+                                </thead>
+                                <tbody id="previewBody"></tbody>
+                            </table>
+                        </div>
+                        <small class="text-muted">처음 5개 행만 미리보기로 표시됩니다.</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                <button type="submit" class="btn btn-success" form="addVocaBookForm" id="submitVocaBookBtn">
+                    <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true" id="submitSpinner"></span>
+                    단어장 생성
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 // 등록 모달에서 단어장 선택 시 원본 단어장명 표시
 document.getElementById('addBookstoreModal').addEventListener('show.bs.modal', function (event) {
@@ -439,5 +532,122 @@ function setupVocaColorListeners(prefix) {
 setupVocaColorListeners('colorMain');
 setupVocaColorListeners('colorSub');
 setupVocaColorListeners('colorBackground');
+
+// 단어장 추가 - 엑셀 파일 미리보기
+document.getElementById('excelFile').addEventListener('change', async function(e) {
+    const file = e.target.files[0];
+    if (!file) {
+        document.getElementById('filePreview').style.display = 'none';
+        return;
+    }
+    
+    // 파일 확장자 확인
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (!['xlsx', 'xls'].includes(ext)) {
+        alert('엑셀 파일(.xlsx, .xls)만 업로드 가능합니다.');
+        e.target.value = '';
+        return;
+    }
+    
+    // SheetJS 라이브러리가 없으면 미리보기 표시 안함
+    if (typeof XLSX === 'undefined') {
+        document.getElementById('filePreview').style.display = 'none';
+        return;
+    }
+    
+    try {
+        const data = await file.arrayBuffer();
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+        
+        // 미리보기 테이블 생성
+        const headerRow = document.getElementById('previewHeader');
+        const bodyEl = document.getElementById('previewBody');
+        
+        headerRow.innerHTML = '';
+        bodyEl.innerHTML = '';
+        
+        if (jsonData.length > 0) {
+            // 헤더 생성
+            const colCount = Math.max(...jsonData.slice(0, 5).map(row => row.length));
+            const headers = ['단어', '뜻'];
+            for (let i = 1; i <= Math.ceil((colCount - 2) / 2); i++) {
+                headers.push('예문' + i, '예문뜻' + i);
+            }
+            
+            headers.slice(0, colCount).forEach(h => {
+                const th = document.createElement('th');
+                th.textContent = h;
+                headerRow.appendChild(th);
+            });
+            
+            // 데이터 행 생성 (최대 5개)
+            jsonData.slice(0, 5).forEach(row => {
+                const tr = document.createElement('tr');
+                for (let i = 0; i < colCount; i++) {
+                    const td = document.createElement('td');
+                    td.textContent = row[i] !== undefined ? row[i] : '';
+                    td.style.maxWidth = '150px';
+                    td.style.overflow = 'hidden';
+                    td.style.textOverflow = 'ellipsis';
+                    td.style.whiteSpace = 'nowrap';
+                    tr.appendChild(td);
+                }
+                bodyEl.appendChild(tr);
+            });
+            
+            document.getElementById('filePreview').style.display = 'block';
+        }
+    } catch (error) {
+        console.error('파일 미리보기 오류:', error);
+    }
+});
+
+// 단어장 추가 폼 제출
+document.getElementById('addVocaBookForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const submitBtn = document.getElementById('submitVocaBookBtn');
+    const spinner = document.getElementById('submitSpinner');
+    
+    // 버튼 비활성화 및 로딩 표시
+    submitBtn.disabled = true;
+    spinner.classList.remove('d-none');
+    
+    try {
+        const formData = new FormData(this);
+        
+        const response = await fetch('/bookstore/api/voca_book', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert(result.message);
+            location.reload();
+        } else {
+            alert('오류: ' + result.error);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('단어장 생성 중 오류가 발생했습니다.');
+    } finally {
+        // 버튼 다시 활성화
+        submitBtn.disabled = false;
+        spinner.classList.add('d-none');
+    }
+});
+
+// 모달 닫힐 때 폼 초기화
+document.getElementById('addVocaBookModal').addEventListener('hidden.bs.modal', function() {
+    document.getElementById('addVocaBookForm').reset();
+    document.getElementById('filePreview').style.display = 'none';
+});
 </script>
+
+<!-- SheetJS 라이브러리 (엑셀 미리보기용) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 {% endblock %} 

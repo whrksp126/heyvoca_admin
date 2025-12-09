@@ -1,65 +1,209 @@
 {% extends 'base.html' %}
-{% block title %}단어장 목록{% endblock %}
+{% block title %}단어 목록{% endblock %}
 {% block content %}
-<h2>단어장 목록</h2>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>단어 목록</h2>
+</div>
+
 <form class="row g-3 mb-3" method="get">
     <div class="col-auto">
-        <input type="text" class="form-control" name="q" placeholder="단어장명 검색" value="{{ request.args.q }}">
-    </div>
-    <div class="col-auto">
-        <select class="form-select" name="category">
-            <option value="">전체 카테고리</option>
-            {% for category in ['수능', '토익', '토플', '일상', '비즈니스'] %}
-            <option value="{{ category }}" {% if request.args.category == category %}selected{% endif %}>{{ category }}</option>
-            {% endfor %}
-        </select>
+        <input type="text" class="form-control" name="q" placeholder="단어 검색" value="{{ search }}">
     </div>
     <div class="col-auto">
         <button type="submit" class="btn btn-secondary">검색</button>
     </div>
+    <div class="col-auto">
+        <a href="/voca/" class="btn btn-outline-secondary">전체보기</a>
+    </div>
 </form>
 
-<div class="row">
-    {% for voca_book in voca_books %}
-    <div class="col-md-6 col-lg-4 mb-3">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">{{ voca_book.book_nm }}</h5>
-                <p class="card-text">
-                    <small class="text-muted">
-                        언어: {{ voca_book.language }}<br>
-                        출처: {{ voca_book.source }}<br>
-                        {% if voca_book.category %}카테고리: {{ voca_book.category }}<br>{% endif %}
-                        {% if voca_book.word_count %}단어 수: {{ voca_book.word_count }}<br>{% endif %}
-                        {% if voca_book.updated_at %}업데이트: {{ voca_book.updated_at.strftime('%Y-%m-%d') }}<br>{% endif %}
-                    </small>
-                </p>
-                <div class="btn-group" role="group">
-                    <button class="btn btn-sm btn-primary" data-id="{{ voca_book.id }}" data-bs-toggle="modal" data-bs-target="#editVocaBookModal">수정</button>
-                    <button class="btn btn-sm btn-danger" data-id="{{ voca_book.id }}">삭제</button>
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th style="width: 3%;"></th>
+            <th style="width: 15%;">단어</th>
+            <th style="width: 15%;">발음</th>
+            <th style="width: 40%;">뜻 (요약)</th>
+            <th style="width: 12%;">동사 변형</th>
+            <th style="width: 15%;">관리</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for voca in vocas %}
+        <tr class="main-row">
+            <td class="text-center">
+                <button class="btn btn-sm btn-link toggle-details p-0" data-voca-id="{{ voca.id }}" title="상세보기" style="font-size: 1.2rem; text-decoration: none;">
+                    <span class="toggle-icon">⋯</span>
+                </button>
+            </td>
+            <td><strong>{{ voca.word }}</strong></td>
+            <td>{{ voca.pronunciation or '-' }}</td>
+            <td>
+                {% if voca.voca_meanings %}
+                    {% for meaning_map in voca.voca_meanings[:3] %}
+                        {{ meaning_map.meaning.meaning }}{% if not loop.last %}, {% endif %}
+                    {% endfor %}
+                    {% if voca.voca_meanings|length > 3 %}...{% endif %}
+                {% else %}
+                    <span class="text-muted">-</span>
+                {% endif %}
+            </td>
+            <td>{{ voca.verb_forms or '-' }}</td>
+            <td>
+                <button class="btn btn-sm btn-primary edit-btn" data-id="{{ voca.id }}" data-bs-toggle="modal" data-bs-target="#editVocaModal">수정</button>
+                <button class="btn btn-sm btn-danger delete-btn" data-id="{{ voca.id }}">삭제</button>
+            </td>
+        </tr>
+        <tr class="detail-row" id="detail-{{ voca.id }}" style="display: none;">
+            <td colspan="6" class="bg-light">
+                <div class="p-3">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="fw-bold">뜻</h6>
+                            {% if voca.voca_meanings %}
+                            <ul class="list-unstyled">
+                                {% for meaning_map in voca.voca_meanings %}
+                                <li>{{ loop.index }}. {{ meaning_map.meaning.meaning }}</li>
+                                {% endfor %}
+                            </ul>
+                            {% else %}
+                            <p class="text-muted">등록된 뜻이 없습니다.</p>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="fw-bold">예문</h6>
+                            {% if voca.voca_examples %}
+                            {% for example_map in voca.voca_examples %}
+                            <div class="mb-3 p-2 border rounded">
+                                {% if example_map.example.exam_en %}
+                                <p class="mb-1"><strong>EN:</strong> {{ example_map.example.exam_en }}</p>
+                                {% endif %}
+                                {% if example_map.example.exam_ko %}
+                                <p class="mb-0 text-muted"><strong>KO:</strong> {{ example_map.example.exam_ko }}</p>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                            {% else %}
+                            <p class="text-muted">등록된 예문이 없습니다.</p>
+                            {% endif %}
+                        </div>
+                    </div>
                 </div>
-            </div>
-        </div>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- 페이지네이션 -->
+{% if pagination.pages > 1 %}
+<nav aria-label="Page navigation">
+    <ul class="pagination justify-content-center">
+        {% if pagination.has_prev %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ pagination.prev_num }}{% if search %}&q={{ search }}{% endif %}">이전</a>
+        </li>
+        {% else %}
+        <li class="page-item disabled">
+            <span class="page-link">이전</span>
+        </li>
+        {% endif %}
+        
+        {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+            {% if page_num %}
+                {% if page_num == pagination.page %}
+                <li class="page-item active">
+                    <span class="page-link">{{ page_num }}</span>
+                </li>
+                {% else %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_num }}{% if search %}&q={{ search }}{% endif %}">{{ page_num }}</a>
+                </li>
+                {% endif %}
+            {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">...</span>
+                </li>
+            {% endif %}
+        {% endfor %}
+        
+        {% if pagination.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ pagination.next_num }}{% if search %}&q={{ search }}{% endif %}">다음</a>
+        </li>
+        {% else %}
+        <li class="page-item disabled">
+            <span class="page-link">다음</span>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+<!-- 단어 수정 모달 -->
+<div class="modal fade" id="editVocaModal" tabindex="-1" aria-labelledby="editVocaModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="editVocaModalLabel">단어 수정</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="editVocaForm">
+          <input type="hidden" name="id" id="editVocaId">
+          <div class="mb-3">
+            <label for="editWord" class="form-label">단어 *</label>
+            <input type="text" class="form-control" id="editWord" name="word" required>
+          </div>
+          <div class="mb-3">
+            <label for="editPronunciation" class="form-label">발음</label>
+            <input type="text" class="form-control" id="editPronunciation" name="pronunciation">
+          </div>
+          <div class="mb-3">
+            <label for="editVerbForms" class="form-label">동사 변형</label>
+            <input type="text" class="form-control" id="editVerbForms" name="verb_forms">
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+        <button type="submit" class="btn btn-primary" form="editVocaForm">저장</button>
+      </div>
     </div>
-    {% endfor %}
+  </div>
 </div>
 
-<!-- edit voca book modal은 별도 템플릿에서 include 예정 -->
-{% include 'modals/edit_voca_book_modal.html' %}
-
 <script>
+// 행 확장/축소 토글
+document.querySelectorAll('.toggle-details').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const vocaId = this.getAttribute('data-voca-id');
+        const detailRow = document.getElementById(`detail-${vocaId}`);
+        const icon = this.querySelector('.toggle-icon');
+        
+        if (detailRow.style.display === 'none') {
+            detailRow.style.display = 'table-row';
+            icon.textContent = '✕';
+        } else {
+            detailRow.style.display = 'none';
+            icon.textContent = '⋯';
+        }
+    });
+});
+
 // 삭제 버튼 이벤트
-document.querySelectorAll('.btn-danger[data-id]').forEach(btn => {
+document.querySelectorAll('.delete-btn').forEach(btn => {
     btn.addEventListener('click', async function() {
         if (!confirm('정말 삭제하시겠습니까?')) return;
         
-        const id = btn.getAttribute('data-id');
+        const id = this.getAttribute('data-id');
         try {
             const response = await fetch(`/voca/api/voca/${id}`, {
                 method: 'DELETE'
             });
             
             if (response.ok) {
+                alert('삭제되었습니다.');
                 location.reload();
             } else {
                 alert('삭제에 실패했습니다.');
@@ -69,6 +213,56 @@ document.querySelectorAll('.btn-danger[data-id]').forEach(btn => {
             alert('삭제 중 오류가 발생했습니다.');
         }
     });
+});
+
+// 수정 모달 데이터 로드
+document.getElementById('editVocaModal').addEventListener('show.bs.modal', function (event) {
+    const button = event.relatedTarget;
+    const id = button.getAttribute('data-id');
+    
+    // 해당 행에서 데이터 가져오기
+    const row = button.closest('tr');
+    const word = row.cells[1].textContent.trim();
+    const pronunciation = row.cells[2].textContent.trim();
+    const verbForms = row.cells[4].textContent.trim();
+    
+    // 폼에 데이터 설정
+    document.getElementById('editVocaId').value = id;
+    document.getElementById('editWord').value = word;
+    document.getElementById('editPronunciation').value = pronunciation === '-' ? '' : pronunciation;
+    document.getElementById('editVerbForms').value = verbForms === '-' ? '' : verbForms;
+});
+
+// 수정 폼 제출
+document.getElementById('editVocaForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const id = document.getElementById('editVocaId').value;
+    const data = {
+        word: document.getElementById('editWord').value,
+        pronunciation: document.getElementById('editPronunciation').value || null,
+        verb_forms: document.getElementById('editVerbForms').value || null
+    };
+    
+    try {
+        const response = await fetch(`/voca/api/voca/${id}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        
+        if (response.ok) {
+            alert('수정되었습니다.');
+            location.reload();
+        } else {
+            alert('수정에 실패했습니다.');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('수정 중 오류가 발생했습니다.');
+    }
 });
 </script>
 {% endblock %} 

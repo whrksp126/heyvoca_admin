@@ -334,4 +334,23 @@ class Goals(db.Model):
         self.reward = reward
 
 
+class BookstoreCategory(db.Model):
+    __tablename__ = 'bookstore_category'
+    id = Column(Integer, primary_key=True, nullable=False)
+    category = Column(String(100), nullable=False)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    def __init__(self, category):
+        self.category = category
+
+
+class BookstoreHasCategory(db.Model):
+    __tablename__ = 'bookstore_has_category'
+    bookstore_id = Column(Integer, ForeignKey('bookstore.id'), primary_key=True, nullable=False)
+    category_id = Column(Integer, ForeignKey('bookstore_category.id'), primary_key=True, nullable=False)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    def __init__(self, bookstore_id, category_id):
+        self.bookstore_id = bookstore_id
+        self.category_id = category_id
 
