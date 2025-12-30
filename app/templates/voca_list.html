@@ -21,11 +21,12 @@
     <thead>
         <tr>
             <th style="width: 3%;"></th>
-            <th style="width: 15%;">단어</th>
-            <th style="width: 15%;">발음</th>
-            <th style="width: 40%;">뜻 (요약)</th>
-            <th style="width: 12%;">동사 변형</th>
-            <th style="width: 15%;">관리</th>
+            <th style="width: 12%;">단어</th>
+            <th style="width: 12%;">발음</th>
+            <th style="width: 8%;">레벨</th>
+            <th style="width: 35%;">뜻 (요약)</th>
+            <th style="width: 10%;">동사 변형</th>
+            <th style="width: 20%;">관리</th>
         </tr>
     </thead>
     <tbody>
@@ -39,6 +40,13 @@
             <td><strong>{{ voca.word }}</strong></td>
             <td>{{ voca.pronunciation or '-' }}</td>
             <td>
+                {% if voca.level is not none and voca.level != '' %}
+                    <span class="badge bg-info">{{ voca.level }}</span>
+                {% else %}
+                    <span class="text-muted">-</span>
+                {% endif %}
+            </td>
+            <td>
                 {% if voca.voca_meanings %}
                     {% for meaning_map in voca.voca_meanings[:3] %}
                         {{ meaning_map.meaning.meaning }}{% if not loop.last %}, {% endif %}
@@ -51,11 +59,15 @@
             <td>{{ voca.verb_forms or '-' }}</td>
             <td>
                 <button class="btn btn-sm btn-primary edit-btn" data-id="{{ voca.id }}" data-bs-toggle="modal" data-bs-target="#editVocaModal">수정</button>
-                <button class="btn btn-sm btn-danger delete-btn" data-id="{{ voca.id }}">삭제</button>
+                {% if voca.is_active %}
+                    <button class="btn btn-sm btn-warning hide-btn" data-id="{{ voca.id }}">숨김</button>
+                {% else %}
+                    <button class="btn btn-sm btn-success show-btn" data-id="{{ voca.id }}">보이기</button>
+                {% endif %}
             </td>
         </tr>
         <tr class="detail-row" id="detail-{{ voca.id }}" style="display: none;">
-            <td colspan="6" class="bg-light">
+            <td colspan="7" class="bg-light">
                 <div class="p-3">
                     <div class="row">
                         <div class="col-md-6">
@@ -142,7 +154,7 @@
 
 <!-- 단어 수정 모달 -->
 <div class="modal fade" id="editVocaModal" tabindex="-1" aria-labelledby="editVocaModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
+  <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="editVocaModalLabel">단어 수정</h5>
@@ -151,17 +163,65 @@
       <div class="modal-body">
         <form id="editVocaForm">
           <input type="hidden" name="id" id="editVocaId">
-          <div class="mb-3">
-            <label for="editWord" class="form-label">단어 *</label>
-            <input type="text" class="form-control" id="editWord" name="word" required>
-          </div>
-          <div class="mb-3">
-            <label for="editPronunciation" class="form-label">발음</label>
-            <input type="text" class="form-control" id="editPronunciation" name="pronunciation">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="editWord" class="form-label">단어 *</label>
+              <input type="text" class="form-control" id="editWord" name="word" required>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label for="editPronunciation" class="form-label">발음</label>
+              <input type="text" class="form-control" id="editPronunciation" name="pronunciation">
+            </div>
           </div>
           <div class="mb-3">
             <label for="editVerbForms" class="form-label">동사 변형</label>
             <input type="text" class="form-control" id="editVerbForms" name="verb_forms">
+          </div>
+          <div class="mb-3">
+            <label for="editLevel" class="form-label">레벨</label>
+            <select class="form-select" id="editLevel" name="level">
+              <option value="">선택 안함</option>
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+              <option value="6">6</option>
+              <option value="7">7</option>
+              <option value="8">8</option>
+              <option value="9">9</option>
+              <option value="10">10</option>
+            </select>
+          </div>
+          
+          <hr>
+          
+          <!-- 뜻 섹션 -->
+          <div class="mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <label class="form-label mb-0">뜻</label>
+              <button type="button" class="btn btn-sm btn-outline-primary" id="addMeaningBtn">
+                <i class="bi bi-plus"></i> 뜻 추가
+              </button>
+            </div>
+            <div id="meaningsContainer">
+              <!-- 동적으로 추가됨 -->
+            </div>
+          </div>
+          
+          <hr>
+          
+          <!-- 예문 섹션 -->
+          <div class="mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <label class="form-label mb-0">예문</label>
+              <button type="button" class="btn btn-sm btn-outline-primary" id="addExampleBtn">
+                <i class="bi bi-plus"></i> 예문 추가
+              </button>
+            </div>
+            <div id="examplesContainer">
+              <!-- 동적으로 추가됨 -->
+            </div>
           </div>
         </form>
       </div>
@@ -191,46 +251,182 @@ document.querySelectorAll('.toggle-details').forEach(btn => {
     });
 });
 
-// 삭제 버튼 이벤트
-document.querySelectorAll('.delete-btn').forEach(btn => {
+// 숨김 버튼 이벤트
+document.querySelectorAll('.hide-btn').forEach(btn => {
     btn.addEventListener('click', async function() {
-        if (!confirm('정말 삭제하시겠습니까?')) return;
+        if (!confirm('이 단어를 숨기시겠습니까?')) return;
         
         const id = this.getAttribute('data-id');
         try {
-            const response = await fetch(`/voca/api/voca/${id}`, {
-                method: 'DELETE'
+            const response = await fetch(`/voca/api/voca/${id}/hide`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
             });
             
             if (response.ok) {
-                alert('삭제되었습니다.');
+                alert('숨김 처리되었습니다.');
                 location.reload();
             } else {
-                alert('삭제에 실패했습니다.');
+                alert('숨김 처리에 실패했습니다.');
             }
         } catch (error) {
             console.error('Error:', error);
-            alert('삭제 중 오류가 발생했습니다.');
+            alert('숨김 처리 중 오류가 발생했습니다.');
         }
     });
 });
 
+// 보이기 버튼 이벤트
+document.querySelectorAll('.show-btn').forEach(btn => {
+    btn.addEventListener('click', async function() {
+        if (!confirm('이 단어를 다시 보이게 하시겠습니까?')) return;
+        
+        const id = this.getAttribute('data-id');
+        try {
+            const response = await fetch(`/voca/api/voca/${id}/show`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+            
+            if (response.ok) {
+                alert('보이기 처리되었습니다.');
+                location.reload();
+            } else {
+                alert('보이기 처리에 실패했습니다.');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('보이기 처리 중 오류가 발생했습니다.');
+        }
+    });
+});
+
+// 뜻 추가 버튼
+let meaningIndex = 0;
+document.getElementById('addMeaningBtn').addEventListener('click', function() {
+    addMeaningField();
+});
+
+function addMeaningField(meaningId = null, meaningText = '') {
+    const container = document.getElementById('meaningsContainer');
+    const div = document.createElement('div');
+    div.className = 'input-group mb-2';
+    div.innerHTML = `
+        <input type="hidden" class="meaning-id" value="${meaningId || ''}">
+        <input type="text" class="form-control meaning-input" value="${meaningText}" placeholder="뜻을 입력하세요">
+        <button type="button" class="btn btn-outline-danger remove-meaning-btn" type="button">삭제</button>
+    `;
+    container.appendChild(div);
+    
+    // 삭제 버튼 이벤트
+    div.querySelector('.remove-meaning-btn').addEventListener('click', function() {
+        div.remove();
+    });
+    
+    meaningIndex++;
+}
+
+// 예문 추가 버튼
+let exampleIndex = 0;
+document.getElementById('addExampleBtn').addEventListener('click', function() {
+    addExampleField();
+});
+
+function addExampleField(exampleId = null, examEn = '', examKo = '') {
+    const container = document.getElementById('examplesContainer');
+    const div = document.createElement('div');
+    div.className = 'border rounded p-3 mb-2';
+    div.innerHTML = `
+        <input type="hidden" class="example-id" value="${exampleId || ''}">
+        <div class="mb-2">
+            <label class="form-label small">영어 예문</label>
+            <input type="text" class="form-control example-en-input" value="${examEn}" placeholder="영어 예문을 입력하세요">
+        </div>
+        <div class="mb-2">
+            <label class="form-label small">한국어 예문</label>
+            <input type="text" class="form-control example-ko-input" value="${examKo}" placeholder="한국어 예문을 입력하세요">
+        </div>
+        <button type="button" class="btn btn-sm btn-outline-danger remove-example-btn">삭제</button>
+    `;
+    container.appendChild(div);
+    
+    // 삭제 버튼 이벤트
+    div.querySelector('.remove-example-btn').addEventListener('click', function() {
+        div.remove();
+    });
+    
+    exampleIndex++;
+}
+
 // 수정 모달 데이터 로드
-document.getElementById('editVocaModal').addEventListener('show.bs.modal', function (event) {
+document.getElementById('editVocaModal').addEventListener('show.bs.modal', async function (event) {
     const button = event.relatedTarget;
     const id = button.getAttribute('data-id');
     
-    // 해당 행에서 데이터 가져오기
+    // 기본 정보는 행에서 가져오기
     const row = button.closest('tr');
     const word = row.cells[1].textContent.trim();
     const pronunciation = row.cells[2].textContent.trim();
-    const verbForms = row.cells[4].textContent.trim();
+    const levelText = row.cells[3].textContent.trim();
+    const verbForms = row.cells[5].textContent.trim();
     
-    // 폼에 데이터 설정
+    // 레벨 추출 (badge에서 숫자만)
+    let level = '';
+    if (levelText && levelText !== '-') {
+        level = levelText.replace(/\D/g, ''); // 숫자만 추출
+    }
+    
+    // 폼에 기본 데이터 설정
     document.getElementById('editVocaId').value = id;
     document.getElementById('editWord').value = word;
     document.getElementById('editPronunciation').value = pronunciation === '-' ? '' : pronunciation;
+    document.getElementById('editLevel').value = level;
     document.getElementById('editVerbForms').value = verbForms === '-' ? '' : verbForms;
+    
+    // 뜻과 예문 컨테이너 초기화
+    document.getElementById('meaningsContainer').innerHTML = '';
+    document.getElementById('examplesContainer').innerHTML = '';
+    
+    // API에서 상세 정보 가져오기
+    try {
+        const response = await fetch(`/voca/api/voca/${id}`);
+        const result = await response.json();
+        
+        if (result.success && result.voca) {
+            // 뜻 로드
+            if (result.voca.meanings && result.voca.meanings.length > 0) {
+                result.voca.meanings.forEach(meaning => {
+                    addMeaningField(meaning.id, meaning.meaning);
+                });
+            } else {
+                // 기본으로 하나 추가
+                addMeaningField();
+            }
+            
+            // 예문 로드
+            if (result.voca.examples && result.voca.examples.length > 0) {
+                result.voca.examples.forEach(example => {
+                    addExampleField(example.id, example.exam_en || '', example.exam_ko || '');
+                });
+            } else {
+                // 기본으로 하나 추가
+                addExampleField();
+            }
+        } else {
+            // 기본 필드 추가
+            addMeaningField();
+            addExampleField();
+        }
+    } catch (error) {
+        console.error('Error loading voca details:', error);
+        // 기본 필드 추가
+        addMeaningField();
+        addExampleField();
+    }
 });
 
 // 수정 폼 제출
@@ -238,10 +434,43 @@ document.getElementById('editVocaForm').addEventListener('submit', async functio
     e.preventDefault();
     
     const id = document.getElementById('editVocaId').value;
+    
+    // 뜻 수집
+    const meanings = [];
+    document.querySelectorAll('#meaningsContainer .input-group').forEach(div => {
+        const meaningInput = div.querySelector('.meaning-input');
+        const meaningId = div.querySelector('.meaning-id').value;
+        const meaningText = meaningInput.value.trim();
+        if (meaningText) {
+            meanings.push({
+                id: meaningId || null,
+                meaning: meaningText
+            });
+        }
+    });
+    
+    // 예문 수집
+    const examples = [];
+    document.querySelectorAll('#examplesContainer .border').forEach(div => {
+        const exampleId = div.querySelector('.example-id').value;
+        const examEn = div.querySelector('.example-en-input').value.trim();
+        const examKo = div.querySelector('.example-ko-input').value.trim();
+        if (examEn || examKo) {
+            examples.push({
+                id: exampleId || null,
+                exam_en: examEn,
+                exam_ko: examKo
+            });
+        }
+    });
+    
     const data = {
         word: document.getElementById('editWord').value,
         pronunciation: document.getElementById('editPronunciation').value || null,
-        verb_forms: document.getElementById('editVerbForms').value || null
+        verb_forms: document.getElementById('editVerbForms').value || null,
+        level: document.getElementById('editLevel').value || null,
+        meanings: meanings,
+        examples: examples
     };
     
     try {
@@ -253,7 +482,9 @@ document.getElementById('editVocaForm').addEventListener('submit', async functio
             body: JSON.stringify(data)
         });
         
-        if (response.ok) {
+        const result = await response.json();
+        
+        if (result.success) {
             alert('수정되었습니다.');
             location.reload();
         } else {

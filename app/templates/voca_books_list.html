@@ -1,8 +1,8 @@
 {% extends 'base.html' %}
-{% block title %}단어장 등록{% endblock %}
+{% block title %}단어장 목록{% endblock %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2>단어장 등록</h2>
+    <h2>단어장 목록</h2>
     <div>
         <button type="button" class="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#addVocaBookModal">
             <i class="bi bi-plus-lg"></i> 단어장 추가
@@ -78,33 +78,34 @@
                     </small>
                 </p>
                 
-                {% if voca_book.is_registered %}
-                <!-- 이미 등록된 경우: 수정/삭제 버튼 -->
+                <!-- 수정/삭제 버튼 -->
                 <div class="btn-group" role="group">
                     <button class="btn btn-warning btn-sm" 
                             data-bs-toggle="modal" 
-                            data-bs-target="#editBookstoreModal"
-                            data-bookstore-id="{{ voca_book.bookstore_id }}"
-                            data-book-id="{{ voca_book.id }}"
-                            data-book-name="{{ voca_book.book_nm }}"
-                            data-display-name="{{ voca_book.bookstore_name }}">
+                            data-bs-target="#editVocaBookModal"
+                            data-voca-book-id="{{ voca_book.id }}"
+                            data-book-nm="{{ voca_book.book_nm }}"
+                            data-language="{{ voca_book.language }}"
+                            data-source="{{ voca_book.source }}"
+                            data-category="{{ voca_book.category or '' }}"
+                            data-username="{{ voca_book.username or '' }}">
                         수정
                     </button>
-                    <button class="btn btn-danger btn-sm" 
-                            data-bookstore-id="{{ voca_book.bookstore_id }}">
+                    <button class="btn btn-danger btn-sm delete-voca-book-btn" 
+                            data-voca-book-id="{{ voca_book.id }}">
                         삭제
                     </button>
+                    {% if not voca_book.is_registered %}
+                    <!-- 등록되지 않은 경우: 등록 버튼 -->
+                    <button class="btn btn-primary btn-sm" 
+                            data-bs-toggle="modal" 
+                            data-bs-target="#addBookstoreModal"
+                            data-book-id="{{ voca_book.id }}"
+                            data-book-name="{{ voca_book.book_nm }}">
+                        북스토어에 등록
+                    </button>
+                    {% endif %}
                 </div>
-                {% else %}
-                <!-- 등록되지 않은 경우: 등록 버튼 -->
-                <button class="btn btn-primary btn-sm" 
-                        data-bs-toggle="modal" 
-                        data-bs-target="#addBookstoreModal"
-                        data-book-id="{{ voca_book.id }}"
-                        data-book-name="{{ voca_book.book_nm }}">
-                    북스토어에 등록
-                </button>
-                {% endif %}
             </div>
         </div>
     </div>
@@ -245,47 +246,57 @@
     </div>
 </div>
 
-<!-- 북스토어 수정 모달 -->
-<div class="modal fade" id="editBookstoreModal" tabindex="-1" aria-labelledby="editBookstoreModalLabel" aria-hidden="true">
+<!-- 단어장 수정 모달 -->
+<div class="modal fade" id="editVocaBookModal" tabindex="-1" aria-labelledby="editVocaBookModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="editBookstoreModalLabel">북스토어 수정</h5>
+                <h5 class="modal-title" id="editVocaBookModalLabel">단어장 수정</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="editBookstoreForm">
-                    <input type="hidden" name="bookstore_id" id="editBookstoreId">
-                    <input type="hidden" name="book_id" id="editBookId">
-                    <div class="mb-3">
-                        <label for="editDisplayName" class="form-label">노출명 *</label>
-                        <input type="text" class="form-control" id="editDisplayName" name="name" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="editCategory" class="form-label">카테고리</label>
-                        <input type="text" class="form-control" id="editCategory" name="category">
-                    </div>
-                    <div class="mb-3">
-                        <label for="editOrder" class="form-label">정렬 순서</label>
-                        <input type="number" class="form-control" id="editOrder" name="order" min="0">
-                    </div>
-                    <div class="mb-3">
-                        <label for="editColor" class="form-label">색상</label>
-                        <input type="color" class="form-control form-control-color" id="editColor" name="color">
-                    </div>
-                    <div class="mb-3">
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="editIsVisible" name="is_visible">
-                            <label class="form-check-label" for="editIsVisible">
-                                공개
-                            </label>
+                <form id="editVocaBookForm">
+                    <input type="hidden" name="voca_book_id" id="editVocaBookId">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="editBookNm" class="form-label">단어장 이름 *</label>
+                            <input type="text" class="form-control" id="editBookNm" name="book_nm" required>
                         </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="editLanguage" class="form-label">언어 *</label>
+                            <select class="form-select" id="editLanguage" name="language" required>
+                                <option value="">선택하세요</option>
+                                <option value="영어">영어</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="editSource" class="form-label">소스(출처) *</label>
+                            <input type="text" class="form-control" id="editSource" name="source" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="editCategory" class="form-label">카테고리</label>
+                            <select class="form-select" id="editCategory" name="category">
+                                <option value="">선택하세요</option>
+                                <option value="수능">수능</option>
+                                <option value="토익">토익</option>
+                                <option value="토플">토플</option>
+                                <option value="일상">일상</option>
+                                <option value="비즈니스">비즈니스</option>
+                                <option value="기타">기타</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editUsername" class="form-label">작성자</label>
+                        <input type="text" class="form-control" id="editUsername" name="username">
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-                <button type="submit" class="btn btn-primary" form="editBookstoreForm">저장</button>
+                <button type="submit" class="btn btn-primary" form="editVocaBookForm">저장</button>
             </div>
         </div>
     </div>
@@ -390,17 +401,58 @@ document.getElementById('addBookstoreModal').addEventListener('show.bs.modal', f
     document.getElementById('displayName').value = bookName;
 });
 
-// 수정 모달에서 데이터 로드
-document.getElementById('editBookstoreModal').addEventListener('show.bs.modal', function (event) {
+// 단어장 수정 모달에서 데이터 로드
+document.getElementById('editVocaBookModal').addEventListener('show.bs.modal', function (event) {
     const button = event.relatedTarget;
-    const bookstoreId = button.getAttribute('data-bookstore-id');
-    const bookId = button.getAttribute('data-book-id');
-    const bookName = button.getAttribute('data-book-name');
-    const displayName = button.getAttribute('data-display-name');
+    const vocaBookId = button.getAttribute('data-voca-book-id');
+    const bookNm = button.getAttribute('data-book-nm');
+    const language = button.getAttribute('data-language');
+    const source = button.getAttribute('data-source');
+    const category = button.getAttribute('data-category');
+    const username = button.getAttribute('data-username');
     
-    document.getElementById('editBookstoreId').value = bookstoreId;
-    document.getElementById('editBookId').value = bookId;
-    document.getElementById('editDisplayName').value = displayName;
+    document.getElementById('editVocaBookId').value = vocaBookId;
+    document.getElementById('editBookNm').value = bookNm;
+    document.getElementById('editLanguage').value = language;
+    document.getElementById('editSource').value = source;
+    document.getElementById('editCategory').value = category;
+    document.getElementById('editUsername').value = username;
+});
+
+// 단어장 수정 폼 제출
+document.getElementById('editVocaBookForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const vocaBookId = document.getElementById('editVocaBookId').value;
+    const data = {
+        book_nm: document.getElementById('editBookNm').value,
+        language: document.getElementById('editLanguage').value,
+        source: document.getElementById('editSource').value,
+        category: document.getElementById('editCategory').value || null,
+        username: document.getElementById('editUsername').value || null
+    };
+    
+    try {
+        const response = await fetch(`/bookstore/api/voca_book/${vocaBookId}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('단어장 정보가 수정되었습니다.');
+            location.reload();
+        } else {
+            alert('수정에 실패했습니다: ' + (result.error || '알 수 없는 오류'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('수정 중 오류가 발생했습니다.');
+    }
 });
 
 // 북스토어 등록 폼 제출
@@ -447,59 +499,10 @@ document.getElementById('addBookstoreForm').addEventListener('submit', async fun
     }
 });
 
-// 북스토어 수정 폼 제출
-document.getElementById('editBookstoreForm').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    
-    const bookstoreId = document.getElementById('editBookstoreId').value;
-    const data = {
-        name: document.getElementById('editDisplayName').value,
-        category: document.getElementById('editCategory').value,
-        order: parseInt(document.getElementById('editOrder').value),
-        color: document.getElementById('editColor').value,
-        is_visible: document.getElementById('editIsVisible').checked
-    };
-    
-    try {
-        const response = await fetch(`/bookstore/api/bookstore/${bookstoreId}`, {
-            method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data)
-        });
-        
-        if (response.ok) {
-            location.reload();
-        } else {
-            alert('수정에 실패했습니다.');
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        alert('수정 중 오류가 발생했습니다.');
-    }
-});
-
 // 삭제 버튼 이벤트
-document.querySelectorAll('.btn-danger[data-bookstore-id]').forEach(btn => {
-    btn.addEventListener('click', async function() {
-        if (!confirm('정말 삭제하시겠습니까?')) return;
-        
-        const bookstoreId = btn.getAttribute('data-bookstore-id');
-        try {
-            const response = await fetch(`/bookstore/api/bookstore/${bookstoreId}`, {
-                method: 'DELETE'
-            });
-            
-            if (response.ok) {
-                location.reload();
-            } else {
-                alert('삭제에 실패했습니다.');
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            alert('삭제 중 오류가 발생했습니다.');
-        }
+document.querySelectorAll('.delete-voca-book-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        alert('정책 준비중');
     });
 });
 

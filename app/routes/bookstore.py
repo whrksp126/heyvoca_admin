@@ -2,7 +2,8 @@ from flask import Blueprint, render_template, request, jsonify
 from flask_login import login_required
 from app.models.models import (
     Bookstore, VocaBook, Level, BookstoreCategory, BookstoreHasCategory,
-    Voca, VocaMeaning, VocaExample, VocaBookMap, VocaMeaningMap, VocaExampleMap
+    Voca, VocaMeaning, VocaExample, VocaBookMap, VocaMeaningMap, VocaExampleMap,
+    UserVocaBook
 )
 from app import db
 import json
@@ -53,6 +54,9 @@ def voca_books_list():
         query = query.filter(VocaBook.book_nm.ilike(f'%{search}%'))
     if category:
         query = query.filter(VocaBook.category == category)
+    
+    # 최근 등록순 정렬
+    query = query.order_by(VocaBook.id.desc())
     
     # 페이지네이션
     pagination = query.paginate(
@@ -148,10 +152,48 @@ def update_bookstore(bookstore_id):
 @login_required
 def delete_bookstore(bookstore_id):
     bookstore = Bookstore.query.get_or_404(bookstore_id)
+    
+    # user_voca_book에서 참조하고 있는지 확인
+    user_voca_book = UserVocaBook.query.filter_by(bookstore_id=bookstore_id).first()
+    if user_voca_book:
+        return jsonify({
+            'success': False, 
+            'error': '유저가 참조하고 있는 책입니다.'
+        }), 400
+    
     db.session.delete(bookstore)
     db.session.commit()
     return jsonify({'success': True})
 
+
+@bp.route('/api/voca_book/<int:voca_book_id>', methods=['PATCH'])
+@login_required
+def update_voca_book(voca_book_id):
+    """단어장 정보 수정"""
+    try:
+        data = request.json
+        voca_book = VocaBook.query.get_or_404(voca_book_id)
+        
+        # 수정 가능한 필드 업데이트
+        if 'book_nm' in data:
+            voca_book.book_nm = data['book_nm']
+        if 'language' in data:
+            voca_book.language = data['language']
+        if 'source' in data:
+            voca_book.source = data['source']
+        if 'category' in data:
+            voca_book.category = data['category'] if data['category'] else None
+        if 'username' in data:
+            voca_book.username = data['username'] if data['username'] else None
+        
+        voca_book.updated_at = datetime.utcnow()
+        
+        db.session.commit()
+        return jsonify({'success': True})
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @bp.route('/api/voca_book', methods=['POST'])
 @login_required
