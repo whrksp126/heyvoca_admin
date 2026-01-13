@@ -61,7 +61,13 @@
         <div class="card {% if voca_book.is_registered %}border-success{% endif %}">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-start mb-2">
-                    <h5 class="card-title mb-0">{{ voca_book.book_nm }}</h5>
+                    <h5 class="card-title mb-0" style="cursor: pointer;" 
+                        data-bs-toggle="modal" 
+                        data-bs-target="#wordListModal"
+                        data-voca-book-id="{{ voca_book.id }}"
+                        data-voca-book-name="{{ voca_book.book_nm }}">
+                        {{ voca_book.book_nm }}
+                    </h5>
                     {% if voca_book.is_registered %}
                     <span class="badge bg-success">등록됨</span>
                     {% endif %}
@@ -103,6 +109,12 @@
                             data-book-id="{{ voca_book.id }}"
                             data-book-name="{{ voca_book.book_nm }}">
                         북스토어에 등록
+                    </button>
+                    {% else %}
+                    <!-- 등록된 경우: 삭제 버튼 -->
+                    <button class="btn btn-primary btn-sm delete-bookstore-btn" 
+                            data-bookstore-id="{{ voca_book.bookstore_id }}">
+                        북스토어 삭제
                     </button>
                     {% endif %}
                 </div>
@@ -177,8 +189,13 @@
                         <div class="form-text">유저에게 보여질 단어장명을 입력하세요 (예: "수능특강 어휘")</div>
                     </div>
                     <div class="mb-3">
-                        <label for="category" class="form-label">카테고리</label>
-                        <input type="text" class="form-control" id="category" name="category">
+                        <label for="categoryId" class="form-label">카테고리</label>
+                        <select class="form-select" id="categoryId" name="category_id">
+                            <option value="">선택 안 함</option>
+                            {% for category in categories %}
+                            <option value="{{ category.id }}">{{ category.category }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
                     <div class="mb-3">
                         <label for="levelId" class="form-label">레벨 *</label>
@@ -297,6 +314,41 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
                 <button type="submit" class="btn btn-primary" form="editVocaBookForm">저장</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 단어 목록 모달 -->
+<div class="modal fade" id="wordListModal" tabindex="-1" aria-labelledby="wordListModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="wordListModalLabel">단어 목록</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3 position-relative">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 id="wordListBookName"></h6>
+                        <span class="badge bg-primary" id="wordListCount">0개 단어</span>
+                    </div>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="newWordInput" placeholder="새 단어 입력 (자동완성 지원)">
+                        <button class="btn btn-primary" id="addWordBtn">추가</button>
+                    </div>
+                    <div id="autocompleteDropdown" class="list-group position-absolute" style="z-index: 1000; max-height: 200px; overflow-y: auto; display: none; width: calc(100% - 80px);"></div>
+                </div>
+                <div id="wordsListContainer" style="max-height: 500px; overflow-y: auto;">
+                    <div class="text-center text-muted py-5">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">로딩 중...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
             </div>
         </div>
     </div>
@@ -463,13 +515,15 @@ document.getElementById('addBookstoreForm').addEventListener('submit', async fun
     const levelSelect = document.getElementById('levelId');
     const levelName = levelSelect.selectedOptions[0]?.getAttribute('data-level-name') || null;
     
+    const categoryId = formData.get('category_id');
     const data = {
         book_id: parseInt(formData.get('book_id')),
         name: formData.get('name'),
-        category: formData.get('category'),
+        category: '',  // 기존 category 필드는 빈 문자열로 유지 (호환성)
         level_id: parseInt(formData.get('level_id')),
         level_name: levelName,
         gem: parseInt(formData.get('gem')) || 0,
+        category_id: categoryId ? parseInt(categoryId) : null,
         color: {
             main: formData.get('color_main'),
             sub: formData.get('color_sub'),
@@ -503,6 +557,32 @@ document.getElementById('addBookstoreForm').addEventListener('submit', async fun
 document.querySelectorAll('.delete-voca-book-btn').forEach(btn => {
     btn.addEventListener('click', function() {
         alert('정책 준비중');
+    });
+});
+
+// 북스토어 삭제 버튼 이벤트
+document.querySelectorAll('.delete-bookstore-btn').forEach(btn => {
+    btn.addEventListener('click', async function() {
+        if (!confirm('북스토어에서 삭제하시겠습니까?\n유저가 사용 중인 경우 숨김 처리됩니다.')) return;
+        
+        const bookstoreId = btn.getAttribute('data-bookstore-id');
+        try {
+            const response = await fetch(`/bookstore/api/bookstore/${bookstoreId}`, {
+                method: 'DELETE'
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok && result.success) {
+                alert(result.message || '처리되었습니다.');
+                location.reload();
+            } else {
+                alert(result.error || '처리에 실패했습니다.');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('처리 중 오류가 발생했습니다.');
+        }
     });
 });
 
@@ -648,6 +728,308 @@ document.getElementById('addVocaBookForm').addEventListener('submit', async func
 document.getElementById('addVocaBookModal').addEventListener('hidden.bs.modal', function() {
     document.getElementById('addVocaBookForm').reset();
     document.getElementById('filePreview').style.display = 'none';
+});
+
+// 단어 목록 모달 관련 JavaScript
+let currentVocaBookId = null;
+let autocompleteTimeout = null;
+let currentPage = 1;
+let isLoading = false;
+let hasMore = true;
+let allWords = [];
+
+// 단어 목록 모달 열기
+document.getElementById('wordListModal').addEventListener('show.bs.modal', function (event) {
+    const button = event.relatedTarget;
+    currentVocaBookId = button.getAttribute('data-voca-book-id');
+    const bookName = button.getAttribute('data-voca-book-name');
+    
+    document.getElementById('wordListBookName').textContent = bookName;
+    document.getElementById('wordsListContainer').innerHTML = '<div class="text-center text-muted py-5"><div class="spinner-border" role="status"><span class="visually-hidden">로딩 중...</span></div></div>';
+    
+    // 초기화
+    currentPage = 1;
+    isLoading = false;
+    hasMore = true;
+    allWords = [];
+    
+    loadWords();
+});
+
+// 단어 목록 모달 닫기 시 초기화
+document.getElementById('wordListModal').addEventListener('hidden.bs.modal', function() {
+    currentVocaBookId = null;
+    currentPage = 1;
+    isLoading = false;
+    hasMore = true;
+    allWords = [];
+});
+
+// 단어 목록 로드 (페이지네이션 지원)
+async function loadWords(reset = false) {
+    if (isLoading || (!hasMore && !reset)) return;
+    
+    isLoading = true;
+    
+    if (reset) {
+        currentPage = 1;
+        allWords = [];
+        document.getElementById('wordsListContainer').innerHTML = '<div class="text-center text-muted py-5"><div class="spinner-border" role="status"><span class="visually-hidden">로딩 중...</span></div></div>';
+    }
+    
+    try {
+        const response = await fetch(`/bookstore/voca_book/${currentVocaBookId}/words?page=${currentPage}&per_page=50`);
+        const result = await response.json();
+        
+        if (result.success) {
+            const pagination = result.pagination;
+            document.getElementById('wordListCount').textContent = `${pagination.total}개 단어`;
+            
+            if (reset) {
+                allWords = result.words;
+            } else {
+                allWords = allWords.concat(result.words);
+            }
+            
+            renderWords(allWords);
+            
+            hasMore = pagination.has_next;
+            currentPage++;
+            
+            // 더 이상 불러올 데이터가 없으면 로딩 표시 제거
+            if (!hasMore) {
+                const container = document.getElementById('wordsListContainer');
+                const loadingDiv = container.querySelector('.loading-more');
+                if (loadingDiv) {
+                    loadingDiv.remove();
+                }
+            }
+        } else {
+            document.getElementById('wordsListContainer').innerHTML = '<div class="alert alert-danger">단어 목록을 불러올 수 없습니다.</div>';
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('wordsListContainer').innerHTML = '<div class="alert alert-danger">오류가 발생했습니다.</div>';
+    } finally {
+        isLoading = false;
+    }
+}
+
+// 단어 목록 렌더링
+function renderWords(words) {
+    const container = document.getElementById('wordsListContainer');
+    
+    if (words.length === 0) {
+        container.innerHTML = '<div class="text-center text-muted py-5">등록된 단어가 없습니다.</div>';
+        return;
+    }
+    
+    let html = '<table class="table table-hover"><thead><tr><th>단어</th><th>발음</th><th>뜻</th><th>예문</th><th>작업</th></tr></thead><tbody>';
+    
+    words.forEach(word => {
+        const meanings = word.meanings && word.meanings.length > 0 ? word.meanings.join(', ') : '-';
+        let examplesHtml = '-';
+        if (word.examples && word.examples.length > 0) {
+            examplesHtml = word.examples.map(ex => {
+                let exHtml = `<div><strong>${ex.exam_en || ''}</strong></div>`;
+                if (ex.exam_ko) {
+                    exHtml += `<div class="text-muted small">${ex.exam_ko}</div>`;
+                }
+                return exHtml;
+            }).join('<br>');
+        }
+        
+        html += `
+            <tr>
+                <td><strong>${word.word}</strong></td>
+                <td>${word.pronunciation || '-'}</td>
+                <td>${meanings}</td>
+                <td>${examplesHtml}</td>
+                <td style="white-space: nowrap;">
+                    <button class="btn btn-danger btn-sm delete-word-btn" 
+                            data-voca-id="${word.voca_id}">
+                        삭제
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+    
+    html += '</tbody></table>';
+    
+    // 무한스크롤 로딩 표시 추가
+    if (hasMore) {
+        html += '<div class="loading-more text-center py-3"><div class="spinner-border spinner-border-sm" role="status"><span class="visually-hidden">로딩 중...</span></div></div>';
+    }
+    
+    container.innerHTML = html;
+    
+    // 삭제 버튼 이벤트 리스너 추가
+    document.querySelectorAll('.delete-word-btn').forEach(btn => {
+        btn.addEventListener('click', async function() {
+            if (!confirm('이 단어를 단어장에서 제거하시겠습니까?')) return;
+            
+            const vocaId = btn.getAttribute('data-voca-id');
+            try {
+                const response = await fetch(`/bookstore/api/voca_book/${currentVocaBookId}/word/${vocaId}`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    alert(result.message || '단어가 제거되었습니다.');
+                    loadWords(true); // 목록 새로고침 (리셋)
+                } else {
+                    alert(result.error || '제거에 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('제거 중 오류가 발생했습니다.');
+            }
+        });
+    });
+}
+
+// 무한스크롤 이벤트 (모달이 열릴 때 설정)
+document.getElementById('wordListModal').addEventListener('shown.bs.modal', function() {
+    const wordsListContainer = document.getElementById('wordsListContainer');
+    if (wordsListContainer) {
+        // 기존 이벤트 리스너 제거 후 새로 추가
+        wordsListContainer.removeEventListener('scroll', handleScroll);
+        wordsListContainer.addEventListener('scroll', handleScroll);
+    }
+});
+
+function handleScroll() {
+    const container = this;
+    const scrollTop = container.scrollTop;
+    const scrollHeight = container.scrollHeight;
+    const clientHeight = container.clientHeight;
+    
+    // 스크롤이 하단 100px 이내에 도달하면 다음 페이지 로드
+    if (scrollTop + clientHeight >= scrollHeight - 100 && hasMore && !isLoading) {
+        loadWords();
+    }
+}
+
+// 자동완성 기능
+document.getElementById('newWordInput').addEventListener('input', function() {
+    const query = this.value.trim();
+    const dropdown = document.getElementById('autocompleteDropdown');
+    
+    if (autocompleteTimeout) {
+        clearTimeout(autocompleteTimeout);
+    }
+    
+    if (query.length < 2) {
+        dropdown.style.display = 'none';
+        return;
+    }
+    
+    autocompleteTimeout = setTimeout(async () => {
+        try {
+            const response = await fetch(`/bookstore/api/voca/autocomplete?q=${encodeURIComponent(query)}`);
+            const result = await response.json();
+            
+            if (result.success && result.words.length > 0) {
+                let html = '';
+                result.words.forEach(word => {
+                    html += `
+                        <a href="#" class="list-group-item list-group-item-action autocomplete-item" 
+                           data-word="${word.word}" 
+                           data-voca-id="${word.id}"
+                           data-pronunciation="${word.pronunciation || ''}">
+                            <div><strong>${word.word}</strong></div>
+                            ${word.pronunciation ? `<div class="small text-muted">${word.pronunciation}</div>` : ''}
+                            ${word.meaning ? `<div class="small">${word.meaning}</div>` : ''}
+                        </a>
+                    `;
+                });
+                dropdown.innerHTML = html;
+                dropdown.style.display = 'block';
+                
+                // 자동완성 항목 클릭 이벤트
+                document.querySelectorAll('.autocomplete-item').forEach(item => {
+                    item.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        document.getElementById('newWordInput').value = this.getAttribute('data-word');
+                        dropdown.style.display = 'none';
+                    });
+                });
+            } else {
+                dropdown.style.display = 'none';
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            dropdown.style.display = 'none';
+        }
+    }, 300);
+});
+
+// 자동완성 드롭다운 외부 클릭 시 닫기
+document.addEventListener('click', function(e) {
+    const dropdown = document.getElementById('autocompleteDropdown');
+    const input = document.getElementById('newWordInput');
+    if (!dropdown.contains(e.target) && e.target !== input) {
+        dropdown.style.display = 'none';
+    }
+});
+
+// 단어 추가 버튼
+document.getElementById('addWordBtn').addEventListener('click', async function() {
+    const wordInput = document.getElementById('newWordInput');
+    const word = wordInput.value.trim();
+    
+    if (!word) {
+        alert('단어를 입력해주세요.');
+        return;
+    }
+    
+    // 자동완성에서 선택된 단어가 있는지 확인
+    const selectedItem = document.querySelector('.autocomplete-item.active');
+    let vocaId = null;
+    let pronunciation = null;
+    
+    if (selectedItem) {
+        vocaId = selectedItem.getAttribute('data-voca-id');
+        pronunciation = selectedItem.getAttribute('data-pronunciation');
+    }
+    
+    try {
+        const response = await fetch(`/bookstore/api/voca_book/${currentVocaBookId}/word`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                word: word,
+                pronunciation: pronunciation
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+            alert(result.message || '단어가 추가되었습니다.');
+            wordInput.value = '';
+            document.getElementById('autocompleteDropdown').style.display = 'none';
+            loadWords(true); // 목록 새로고침 (리셋)
+        } else {
+            alert(result.error || '추가에 실패했습니다.');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('추가 중 오류가 발생했습니다.');
+    }
+});
+
+// Enter 키로 단어 추가
+document.getElementById('newWordInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        document.getElementById('addWordBtn').click();
+    }
 });
 </script>
 

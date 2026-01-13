@@ -8,3 +8,4 @@ env/
 venv/
 .venv/
 *.db 
+deploy.zip

@@ -23,7 +23,7 @@
     </thead>
     <tbody>
         {% for bookstore in bookstores %}
-        <tr data-category-ids="{{ bookstore.category_ids | tojson }}">
+        <tr data-category-id="{{ bookstore.category_id_value }}">
             <td>{{ bookstore.name }}</td>
             <td>{{ bookstore.voca_book.book_nm if bookstore.voca_book else 'N/A' }}</td>
             <td>{{ bookstore.category_list }}</td>

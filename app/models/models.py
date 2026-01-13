@@ -193,6 +193,7 @@ class Bookstore(db.Model):
     name = Column(String(100), nullable=False)
     downloads = Column(Integer, nullable=False)
     category = Column(String(50), nullable=False)
+    category_id = Column(Integer, ForeignKey('bookstore_category.id'), nullable=True)
     color = Column(String(255), nullable=True)
     gem = Column(Integer, nullable=False, default=10)
     hide = Column(String(1), nullable=False)
@@ -204,6 +205,7 @@ class Bookstore(db.Model):
 
     # 관계 정의
     voca_book = relationship("VocaBook")
+    bookstore_category = relationship("BookstoreCategory")
 
 
 ##############
@@ -340,19 +342,77 @@ class BookstoreCategory(db.Model):
     __tablename__ = 'bookstore_category'
     id = Column(Integer, primary_key=True, nullable=False)
     category = Column(String(100), nullable=False)
+    sort_order = Column(Integer, nullable=True, default=0)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
-    def __init__(self, category):
+    def __init__(self, category, sort_order=0):
         self.category = category
+        self.sort_order = sort_order
 
 
-class BookstoreHasCategory(db.Model):
-    __tablename__ = 'bookstore_has_category'
-    bookstore_id = Column(Integer, ForeignKey('bookstore.id'), primary_key=True, nullable=False)
-    category_id = Column(Integer, ForeignKey('bookstore_category.id'), primary_key=True, nullable=False)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+# class BookstoreHasCategory(db.Model):
+#     __tablename__ = 'bookstore_has_category'
+#     bookstore_id = Column(Integer, ForeignKey('bookstore.id'), primary_key=True, nullable=False)
+#     category_id = Column(Integer, ForeignKey('bookstore_category.id'), primary_key=True, nullable=False)
+#     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
-    def __init__(self, bookstore_id, category_id):
-        self.bookstore_id = bookstore_id
-        self.category_id = category_id
+#     def __init__(self, bookstore_id, category_id):
+#         self.bookstore_id = bookstore_id
+#         self.category_id = category_id
 
+
+
+# 재편성된 단어장
+class AdminVocaBook(db.Model):
+    __tablename__ = 'admin_voca_book'
+    id = Column(Integer, primary_key=True)
+    book_nm = Column(String(255), nullable=False)
+    language = Column(String(50), nullable=False)
+    source = Column(String(100), nullable=False)
+    category = Column(String(100), nullable=True)
+    username = Column(String(100), nullable=True)
+    word_count = Column(Integer, nullable=True)
+    updated_at = Column(DateTime, nullable=True)
+
+    # 관계 정의
+    voca_books = relationship("AdminVocaBookMap")
+
+
+class AdminVocaBookMap(db.Model):
+    __tablename__ = 'admin_voca_book_map'
+    id = Column(Integer, primary_key=True)
+    voca_id = Column(Integer, ForeignKey('voca.id'))
+    book_id = Column(Integer, ForeignKey('admin_voca_book.id'))
+    level = Column(Integer, nullable=True)
+    voca_meanings = Column(TEXT, nullable=True)
+    voca_examples = Column(TEXT, nullable=True)
+
+    # 관계 정의
+    voca = relationship("Voca")
+    voca_book = relationship("AdminVocaBook")
+
+
+class UserVocaBookMap(db.Model):
+    __tablename__ = 'user_voca_book_map'
+    id = Column(Integer, primary_key=True)
+    user_voca_book_id = Column(BinaryUUID, ForeignKey('user_voca_book.id'))
+    voca_id = Column(Integer, ForeignKey('voca.id'))
+    level = Column(Integer, nullable=True)
+    voca_meanings = Column(TEXT, nullable=True, comment='admin 사전의 voca일 경우 null')
+    voca_examples = Column(TEXT, nullable=True, comment='admin 사전의 voca일 경우 null')
+    memory_status = Column(TEXT, nullable=True)
+
+    # 관계 정의
+    user_voca_book = relationship("UserVocaBook")
+    voca = relationship("Voca")
+
+
+class UserVoca(db.Model):
+    __tablename__ = 'user_voca'
+    user_id = Column(BinaryUUID, ForeignKey('user.id'), primary_key=True, nullable=False)
+    voca_id = Column(Integer, ForeignKey('voca.id'), primary_key=True, nullable=False)
+    data = Column(TEXT, nullable=True)
+
+    # 관계 정의
+    user = relationship("User")
+    voca = relationship("Voca")

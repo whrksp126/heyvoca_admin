@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, jsonify
 from flask_login import login_required
 from app.models.models import (
-    Bookstore, VocaBook, Level, BookstoreCategory, BookstoreHasCategory,
+    Bookstore, VocaBook, Level, BookstoreCategory,
     Voca, VocaMeaning, VocaExample, VocaBookMap, VocaMeaningMap, VocaExampleMap,
     UserVocaBook
 )
@@ -18,19 +18,17 @@ bp = Blueprint('bookstore', __name__)
 def bookstore_list():
     bookstores = Bookstore.query.order_by(Bookstore.created_at.desc()).all()  # 최근 등록순
     levels = Level.query.order_by(Level.level).all()
-    categories = BookstoreCategory.query.order_by(BookstoreCategory.category).all()
+    categories = BookstoreCategory.query.order_by(BookstoreCategory.sort_order, BookstoreCategory.category).all()
     
-    # 각 bookstore에 카테고리 목록 추가
+    # 각 bookstore에 카테고리 정보 추가
     for bookstore in bookstores:
-        category_mappings = BookstoreHasCategory.query.filter_by(bookstore_id=bookstore.id).all()
-        category_ids = [m.category_id for m in category_mappings]
-        category_names = []
-        for cat_id in category_ids:
-            cat = BookstoreCategory.query.get(cat_id)
-            if cat:
-                category_names.append(cat.category)
-        bookstore.category_list = ', '.join(category_names) if category_names else '-'
-        bookstore.category_ids = category_ids
+        if bookstore.category_id:
+            category = BookstoreCategory.query.get(bookstore.category_id)
+            bookstore.category_list = category.category if category else '-'
+            bookstore.category_id_value = bookstore.category_id
+        else:
+            bookstore.category_list = '-'
+            bookstore.category_id_value = None
     
     return render_template('bookstore_list.html', bookstores=bookstores, levels=levels, categories=categories)
 
@@ -81,6 +79,7 @@ def voca_books_list():
         voca_books = [book for book in voca_books if not book.is_registered]
     
     levels = Level.query.order_by(Level.level).all()
+    categories = BookstoreCategory.query.order_by(BookstoreCategory.sort_order, BookstoreCategory.category).all()
     
     return render_template('voca_books_list.html', 
                          voca_books=voca_books, 
@@ -88,7 +87,8 @@ def voca_books_list():
                          search=search,
                          category=category,
                          status=status,
-                         levels=levels)
+                         levels=levels,
+                         categories=categories)
 
 @bp.route('/api/bookstore', methods=['POST'])
 @login_required
@@ -110,7 +110,8 @@ def create_bookstore():
         gem=data.get('gem', 0),
         level=data.get('level_name'),
         level_id=data['level_id'],
-        book_id=data['book_id']
+        book_id=data['book_id'],
+        category_id=data.get('category_id')
     )
     db.session.add(bookstore)
     db.session.commit()
@@ -136,14 +137,9 @@ def update_bookstore(bookstore_id):
     bookstore.gem = data.get('gem', bookstore.gem)
     bookstore.updated_at = datetime.utcnow()  # 수정 시간 명시적 업데이트
     
-    # 카테고리 업데이트 (다중 선택)
-    if 'category_ids' in data:
-        # 기존 카테고리 관계 삭제
-        BookstoreHasCategory.query.filter_by(bookstore_id=bookstore_id).delete()
-        # 새 카테고리 관계 추가
-        for cat_id in data['category_ids']:
-            new_mapping = BookstoreHasCategory(bookstore_id=bookstore_id, category_id=cat_id)
-            db.session.add(new_mapping)
+    # 카테고리 업데이트
+    if 'category_id' in data:
+        bookstore.category_id = data['category_id'] if data['category_id'] else None
     
     db.session.commit()
     return jsonify({'success': True})
@@ -156,14 +152,15 @@ def delete_bookstore(bookstore_id):
     # user_voca_book에서 참조하고 있는지 확인
     user_voca_book = UserVocaBook.query.filter_by(bookstore_id=bookstore_id).first()
     if user_voca_book:
-        return jsonify({
-            'success': False, 
-            'error': '유저가 참조하고 있는 책입니다.'
-        }), 400
-    
-    db.session.delete(bookstore)
-    db.session.commit()
-    return jsonify({'success': True})
+        # 유저가 사용한 적이 있으면 숨김 처리
+        bookstore.hide = 'Y'
+        db.session.commit()
+        return jsonify({'success': True, 'message': '유저가 사용 중인 북스토어이므로 숨김 처리되었습니다.'})
+    else:
+        # 유저가 사용한 적이 없으면 실제 삭제
+        db.session.delete(bookstore)
+        db.session.commit()
+        return jsonify({'success': True, 'message': '북스토어가 삭제되었습니다.'})
 
 
 @bp.route('/api/voca_book/<int:voca_book_id>', methods=['PATCH'])
@@ -312,6 +309,197 @@ def create_voca_book():
             'word_count': word_count,
             'message': f'단어장이 생성되었습니다. ({word_count}개 단어)'
         })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@bp.route('/voca_book/<int:voca_book_id>/words', methods=['GET'])
+@login_required
+def voca_book_words(voca_book_id):
+    """단어장의 단어 목록 조회 (페이지네이션 지원)"""
+    voca_book = VocaBook.query.get_or_404(voca_book_id)
+    
+    # 페이지네이션 파라미터
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 50, type=int)  # 기본 50개씩
+    
+    # 전체 단어 수 조회
+    total_count = VocaBookMap.query.filter_by(book_id=voca_book_id).count()
+    
+    # JOIN을 사용하여 한 번에 조회 (성능 최적화)
+    # voca_id 순서로 정렬 (추가된 순서대로)
+    word_maps = db.session.query(VocaBookMap, Voca).join(
+        Voca, VocaBookMap.voca_id == Voca.id
+    ).filter(
+        VocaBookMap.book_id == voca_book_id
+    ).order_by(
+        VocaBookMap.voca_id  # voca_id 순서로 정렬 (추가된 순서)
+    ).offset(
+        (page - 1) * per_page
+    ).limit(
+        per_page
+    ).all()
+    
+    # 단어 ID 목록 수집
+    voca_ids = [voca.id for _, voca in word_maps]
+    
+    # 뜻과 예문을 한 번에 조회 (성능 최적화)
+    meanings_dict = {}
+    if voca_ids:
+        meaning_maps = db.session.query(VocaMeaningMap, VocaMeaning).join(
+            VocaMeaning, VocaMeaningMap.meaning_id == VocaMeaning.id
+        ).filter(VocaMeaningMap.voca_id.in_(voca_ids)).all()
+        
+        for mm, meaning in meaning_maps:
+            if mm.voca_id not in meanings_dict:
+                meanings_dict[mm.voca_id] = []
+            meanings_dict[mm.voca_id].append(meaning.meaning)
+    
+    examples_dict = {}
+    if voca_ids:
+        example_maps = db.session.query(VocaExampleMap, VocaExample).join(
+            VocaExample, VocaExampleMap.example_id == VocaExample.id
+        ).filter(VocaExampleMap.voca_id.in_(voca_ids)).all()
+        
+        for em, example in example_maps:
+            if em.voca_id not in examples_dict:
+                examples_dict[em.voca_id] = []
+            examples_dict[em.voca_id].append({
+                'exam_en': example.exam_en,
+                'exam_ko': example.exam_ko
+            })
+    
+    # 결과 구성
+    words = []
+    for _, voca in word_maps:
+        words.append({
+            'voca_id': voca.id,
+            'word': voca.word,
+            'pronunciation': voca.pronunciation,
+            'meanings': meanings_dict.get(voca.id, []),
+            'examples': examples_dict.get(voca.id, [])
+        })
+    
+    return jsonify({
+        'success': True,
+        'voca_book': {
+            'id': voca_book.id,
+            'book_nm': voca_book.book_nm,
+            'language': voca_book.language,
+            'word_count': total_count
+        },
+        'words': words,
+        'pagination': {
+            'page': page,
+            'per_page': per_page,
+            'total': total_count,
+            'pages': (total_count + per_page - 1) // per_page,
+            'has_next': page * per_page < total_count,
+            'has_prev': page > 1
+        }
+    })
+
+@bp.route('/api/voca/autocomplete', methods=['GET'])
+@login_required
+def voca_autocomplete():
+    """단어 자동완성 API"""
+    query = request.args.get('q', '').strip()
+    if not query or len(query) < 2:
+        return jsonify({'success': True, 'words': []})
+    
+    # 단어 검색 (대소문자 무시)
+    vocas = Voca.query.filter(Voca.word.ilike(f'%{query}%')).limit(10).all()
+    
+    words = []
+    for voca in vocas:
+        # 각 단어의 첫 번째 뜻만 가져오기
+        first_meaning = None
+        meaning_map = VocaMeaningMap.query.filter_by(voca_id=voca.id).first()
+        if meaning_map:
+            meaning = VocaMeaning.query.get(meaning_map.meaning_id)
+            if meaning:
+                first_meaning = meaning.meaning
+        
+        words.append({
+            'id': voca.id,
+            'word': voca.word,
+            'pronunciation': voca.pronunciation,
+            'meaning': first_meaning
+        })
+    
+    return jsonify({'success': True, 'words': words})
+
+@bp.route('/api/voca_book/<int:voca_book_id>/word', methods=['POST'])
+@login_required
+def add_word_to_book(voca_book_id):
+    """단어장에 단어 추가"""
+    try:
+        data = request.json
+        word_text = data.get('word', '').strip()
+        
+        if not word_text:
+            return jsonify({'success': False, 'error': '단어를 입력해주세요.'}), 400
+        
+        # 이미 해당 단어장에 단어가 있는지 확인
+        existing_voca = Voca.query.filter_by(word=word_text).first()
+        
+        if existing_voca:
+            # 기존 단어가 있으면 해당 단어 사용
+            voca_id = existing_voca.id
+        else:
+            # 새 단어 생성
+            new_voca = Voca(word=word_text, pronunciation=data.get('pronunciation'))
+            db.session.add(new_voca)
+            db.session.flush()
+            voca_id = new_voca.id
+        
+        # 이미 단어장에 포함되어 있는지 확인
+        existing_map = VocaBookMap.query.filter_by(book_id=voca_book_id, voca_id=voca_id).first()
+        if existing_map:
+            return jsonify({'success': False, 'error': '이미 단어장에 포함된 단어입니다.'}), 400
+        
+        # 단어장에 단어 추가
+        word_map = VocaBookMap(book_id=voca_book_id, voca_id=voca_id)
+        db.session.add(word_map)
+        
+        # 단어 수 업데이트
+        voca_book = VocaBook.query.get(voca_book_id)
+        if voca_book:
+            word_count = VocaBookMap.query.filter_by(book_id=voca_book_id).count()
+            voca_book.word_count = word_count
+            voca_book.updated_at = datetime.utcnow()
+        
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': '단어가 추가되었습니다.'})
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@bp.route('/api/voca_book/<int:voca_book_id>/word/<int:voca_id>', methods=['DELETE'])
+@login_required
+def remove_word_from_book(voca_book_id, voca_id):
+    """단어장에서 단어 제거"""
+    try:
+        # VocaBookMap에서 제거
+        word_map = VocaBookMap.query.filter_by(book_id=voca_book_id, voca_id=voca_id).first()
+        if not word_map:
+            return jsonify({'success': False, 'error': '단어를 찾을 수 없습니다.'}), 404
+        
+        db.session.delete(word_map)
+        
+        # 단어 수 업데이트
+        voca_book = VocaBook.query.get(voca_book_id)
+        if voca_book:
+            word_count = VocaBookMap.query.filter_by(book_id=voca_book_id).count()
+            voca_book.word_count = word_count
+            voca_book.updated_at = datetime.utcnow()
+        
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': '단어가 제거되었습니다.'})
         
     except Exception as e:
         db.session.rollback()
