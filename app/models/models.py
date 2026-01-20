@@ -200,12 +200,14 @@ class Bookstore(db.Model):
     level = Column(String(50), nullable=True)
     level_id = Column(Integer, ForeignKey('level.id'), nullable=False)
     book_id = Column(Integer, ForeignKey('voca_book.id'), nullable=False)
+    admin_voca_book_id = Column(Integer, ForeignKey('admin_voca_book.id'), nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=True, default=None, onupdate=datetime.utcnow)
 
     # 관계 정의
     voca_book = relationship("VocaBook")
     bookstore_category = relationship("BookstoreCategory")
+    admin_voca_book = relationship("AdminVocaBook")
 
 
 ##############
@@ -396,7 +398,7 @@ class UserVocaBookMap(db.Model):
     __tablename__ = 'user_voca_book_map'
     id = Column(Integer, primary_key=True)
     user_voca_book_id = Column(BinaryUUID, ForeignKey('user_voca_book.id'))
-    voca_id = Column(Integer, ForeignKey('voca.id'))
+    user_voca_id = Column(Integer, ForeignKey('user_voca.id'))
     level = Column(Integer, nullable=True)
     voca_meanings = Column(TEXT, nullable=True, comment='admin 사전의 voca일 경우 null')
     voca_examples = Column(TEXT, nullable=True, comment='admin 사전의 voca일 경우 null')
@@ -404,13 +406,15 @@ class UserVocaBookMap(db.Model):
 
     # 관계 정의
     user_voca_book = relationship("UserVocaBook")
-    voca = relationship("Voca")
+    user_voca = relationship("UserVoca")
 
 
 class UserVoca(db.Model):
     __tablename__ = 'user_voca'
-    user_id = Column(BinaryUUID, ForeignKey('user.id'), primary_key=True, nullable=False)
-    voca_id = Column(Integer, ForeignKey('voca.id'), primary_key=True, nullable=False)
+    id = Column(Integer, primary_key=True)
+    user_id = Column(BinaryUUID, ForeignKey('user.id'), nullable=False)
+    voca_id = Column(Integer, ForeignKey('voca.id'), nullable=True)
+    word = Column(String(255), nullable=True)
     data = Column(TEXT, nullable=True)
 
     # 관계 정의
