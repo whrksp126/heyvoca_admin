@@ -199,7 +199,7 @@ class Bookstore(db.Model):
     hide = Column(String(1), nullable=False)
     level = Column(String(50), nullable=True)
     level_id = Column(Integer, ForeignKey('level.id'), nullable=False)
-    book_id = Column(Integer, ForeignKey('voca_book.id'), nullable=False)
+    book_id = Column(Integer, ForeignKey('voca_book.id'), nullable=True)
     admin_voca_book_id = Column(Integer, ForeignKey('admin_voca_book.id'), nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=True, default=None, onupdate=datetime.utcnow)

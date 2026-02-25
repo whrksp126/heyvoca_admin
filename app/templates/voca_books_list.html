@@ -61,16 +61,24 @@
         <div class="card {% if voca_book.is_registered %}border-success{% endif %}">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-start mb-2">
-                    <h5 class="card-title mb-0" style="cursor: pointer;" 
-                        data-bs-toggle="modal" 
+                    <h5 class="card-title mb-0" style="cursor: pointer;"
+                        data-bs-toggle="modal"
                         data-bs-target="#wordListModal"
                         data-voca-book-id="{{ voca_book.id }}"
-                        data-voca-book-name="{{ voca_book.book_nm }}">
+                        data-voca-book-name="{{ voca_book.book_nm }}"
+                        data-book-type="{{ voca_book.book_type }}">
                         {{ voca_book.book_nm }}
                     </h5>
-                    {% if voca_book.is_registered %}
-                    <span class="badge bg-success">등록됨</span>
-                    {% endif %}
+                    <div>
+                        {% if voca_book.book_type == 'admin' %}
+                        <span class="badge bg-primary">신규</span>
+                        {% else %}
+                        <span class="badge bg-secondary">기존</span>
+                        {% endif %}
+                        {% if voca_book.is_registered %}
+                        <span class="badge bg-success">등록됨</span>
+                        {% endif %}
+                    </div>
                 </div>
                 <p class="card-text">
                     <small class="text-muted">
@@ -86,10 +94,11 @@
                 
                 <!-- 수정/삭제 버튼 -->
                 <div class="btn-group" role="group">
-                    <button class="btn btn-warning btn-sm" 
-                            data-bs-toggle="modal" 
+                    <button class="btn btn-warning btn-sm"
+                            data-bs-toggle="modal"
                             data-bs-target="#editVocaBookModal"
                             data-voca-book-id="{{ voca_book.id }}"
+                            data-book-type="{{ voca_book.book_type }}"
                             data-book-nm="{{ voca_book.book_nm }}"
                             data-language="{{ voca_book.language }}"
                             data-source="{{ voca_book.source }}"
@@ -97,22 +106,24 @@
                             data-username="{{ voca_book.username or '' }}">
                         수정
                     </button>
-                    <button class="btn btn-danger btn-sm delete-voca-book-btn" 
-                            data-voca-book-id="{{ voca_book.id }}">
+                    <button class="btn btn-danger btn-sm delete-voca-book-btn"
+                            data-voca-book-id="{{ voca_book.id }}"
+                            data-book-type="{{ voca_book.book_type }}">
                         삭제
                     </button>
                     {% if not voca_book.is_registered %}
                     <!-- 등록되지 않은 경우: 등록 버튼 -->
-                    <button class="btn btn-primary btn-sm" 
-                            data-bs-toggle="modal" 
+                    <button class="btn btn-primary btn-sm"
+                            data-bs-toggle="modal"
                             data-bs-target="#addBookstoreModal"
                             data-book-id="{{ voca_book.id }}"
+                            data-book-type="{{ voca_book.book_type }}"
                             data-book-name="{{ voca_book.book_nm }}">
                         북스토어에 등록
                     </button>
                     {% else %}
                     <!-- 등록된 경우: 삭제 버튼 -->
-                    <button class="btn btn-primary btn-sm delete-bookstore-btn" 
+                    <button class="btn btn-primary btn-sm delete-bookstore-btn"
                             data-bookstore-id="{{ voca_book.bookstore_id }}">
                         북스토어 삭제
                     </button>
@@ -183,6 +194,7 @@
             <div class="modal-body">
                 <form id="addBookstoreForm">
                     <input type="hidden" name="book_id" id="selectedBookId">
+                    <input type="hidden" name="book_type" id="selectedBookType">
                     <div class="mb-3">
                         <label for="displayName" class="form-label">노출명 *</label>
                         <input type="text" class="form-control" id="displayName" name="name" required>
@@ -274,6 +286,7 @@
             <div class="modal-body">
                 <form id="editVocaBookForm">
                     <input type="hidden" name="voca_book_id" id="editVocaBookId">
+                    <input type="hidden" name="book_type" id="editBookType">
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="editBookNm" class="form-label">단어장 이름 *</label>
@@ -447,9 +460,11 @@
 document.getElementById('addBookstoreModal').addEventListener('show.bs.modal', function (event) {
     const button = event.relatedTarget;
     const bookId = button.getAttribute('data-book-id');
+    const bookType = button.getAttribute('data-book-type');
     const bookName = button.getAttribute('data-book-name');
-    
+
     document.getElementById('selectedBookId').value = bookId;
+    document.getElementById('selectedBookType').value = bookType;
     document.getElementById('displayName').value = bookName;
 });
 
@@ -457,13 +472,15 @@ document.getElementById('addBookstoreModal').addEventListener('show.bs.modal', f
 document.getElementById('editVocaBookModal').addEventListener('show.bs.modal', function (event) {
     const button = event.relatedTarget;
     const vocaBookId = button.getAttribute('data-voca-book-id');
+    const bookType = button.getAttribute('data-book-type');
     const bookNm = button.getAttribute('data-book-nm');
     const language = button.getAttribute('data-language');
     const source = button.getAttribute('data-source');
     const category = button.getAttribute('data-category');
     const username = button.getAttribute('data-username');
-    
+
     document.getElementById('editVocaBookId').value = vocaBookId;
+    document.getElementById('editBookType').value = bookType;
     document.getElementById('editBookNm').value = bookNm;
     document.getElementById('editLanguage').value = language;
     document.getElementById('editSource').value = source;
@@ -474,8 +491,9 @@ document.getElementById('editVocaBookModal').addEventListener('show.bs.modal', f
 // 단어장 수정 폼 제출
 document.getElementById('editVocaBookForm').addEventListener('submit', async function(e) {
     e.preventDefault();
-    
+
     const vocaBookId = document.getElementById('editVocaBookId').value;
+    const bookType = document.getElementById('editBookType').value;
     const data = {
         book_nm: document.getElementById('editBookNm').value,
         language: document.getElementById('editLanguage').value,
@@ -483,18 +501,23 @@ document.getElementById('editVocaBookForm').addEventListener('submit', async fun
         category: document.getElementById('editCategory').value || null,
         username: document.getElementById('editUsername').value || null
     };
-    
+
+    // book_type에 따라 다른 API 호출
+    const apiUrl = bookType === 'admin'
+        ? `/bookstore/api/admin_voca_book/${vocaBookId}`
+        : `/bookstore/api/voca_book/${vocaBookId}`;
+
     try {
-        const response = await fetch(`/bookstore/api/voca_book/${vocaBookId}`, {
+        const response = await fetch(apiUrl, {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify(data)
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
             alert('단어장 정보가 수정되었습니다.');
             location.reload();
@@ -510,14 +533,14 @@ document.getElementById('editVocaBookForm').addEventListener('submit', async fun
 // 북스토어 등록 폼 제출
 document.getElementById('addBookstoreForm').addEventListener('submit', async function(e) {
     e.preventDefault();
-    
+
     const formData = new FormData(this);
     const levelSelect = document.getElementById('levelId');
     const levelName = levelSelect.selectedOptions[0]?.getAttribute('data-level-name') || null;
-    
+    const bookType = formData.get('book_type');
+
     const categoryId = formData.get('category_id');
     const data = {
-        book_id: parseInt(formData.get('book_id')),
         name: formData.get('name'),
         category: '',  // 기존 category 필드는 빈 문자열로 유지 (호환성)
         level_id: parseInt(formData.get('level_id')),
@@ -531,7 +554,16 @@ document.getElementById('addBookstoreForm').addEventListener('submit', async fun
         },
         is_visible: formData.get('is_visible') === 'on'
     };
-    
+
+    // book_type에 따라 book_id 또는 admin_voca_book_id 설정
+    if (bookType === 'admin') {
+        data.admin_voca_book_id = parseInt(formData.get('book_id'));
+        data.book_id = null;
+    } else {
+        data.book_id = parseInt(formData.get('book_id'));
+        data.admin_voca_book_id = null;
+    }
+
     try {
         const response = await fetch('/bookstore/api/bookstore', {
             method: 'POST',
@@ -540,7 +572,7 @@ document.getElementById('addBookstoreForm').addEventListener('submit', async fun
             },
             body: JSON.stringify(data)
         });
-        
+
         if (response.ok) {
             alert('북스토어에 성공적으로 등록되었습니다.');
             location.reload();
@@ -701,7 +733,7 @@ document.getElementById('addVocaBookForm').addEventListener('submit', async func
     try {
         const formData = new FormData(this);
         
-        const response = await fetch('/bookstore/api/voca_book', {
+        const response = await fetch('/bookstore/api/admin_voca_book', {
             method: 'POST',
             body: formData
         });
@@ -732,6 +764,7 @@ document.getElementById('addVocaBookModal').addEventListener('hidden.bs.modal', 
 
 // 단어 목록 모달 관련 JavaScript
 let currentVocaBookId = null;
+let currentBookType = null;
 let autocompleteTimeout = null;
 let currentPage = 1;
 let isLoading = false;
@@ -742,23 +775,25 @@ let allWords = [];
 document.getElementById('wordListModal').addEventListener('show.bs.modal', function (event) {
     const button = event.relatedTarget;
     currentVocaBookId = button.getAttribute('data-voca-book-id');
+    currentBookType = button.getAttribute('data-book-type');
     const bookName = button.getAttribute('data-voca-book-name');
-    
+
     document.getElementById('wordListBookName').textContent = bookName;
     document.getElementById('wordsListContainer').innerHTML = '<div class="text-center text-muted py-5"><div class="spinner-border" role="status"><span class="visually-hidden">로딩 중...</span></div></div>';
-    
+
     // 초기화
     currentPage = 1;
     isLoading = false;
     hasMore = true;
     allWords = [];
-    
+
     loadWords();
 });
 
 // 단어 목록 모달 닫기 시 초기화
 document.getElementById('wordListModal').addEventListener('hidden.bs.modal', function() {
     currentVocaBookId = null;
+    currentBookType = null;
     currentPage = 1;
     isLoading = false;
     hasMore = true;
@@ -768,17 +803,22 @@ document.getElementById('wordListModal').addEventListener('hidden.bs.modal', fun
 // 단어 목록 로드 (페이지네이션 지원)
 async function loadWords(reset = false) {
     if (isLoading || (!hasMore && !reset)) return;
-    
+
     isLoading = true;
-    
+
     if (reset) {
         currentPage = 1;
         allWords = [];
         document.getElementById('wordsListContainer').innerHTML = '<div class="text-center text-muted py-5"><div class="spinner-border" role="status"><span class="visually-hidden">로딩 중...</span></div></div>';
     }
-    
+
+    // book_type에 따라 다른 API 호출
+    const apiUrl = currentBookType === 'admin'
+        ? `/bookstore/admin_voca_book/${currentVocaBookId}/words?page=${currentPage}&per_page=50`
+        : `/bookstore/voca_book/${currentVocaBookId}/words?page=${currentPage}&per_page=50`;
+
     try {
-        const response = await fetch(`/bookstore/voca_book/${currentVocaBookId}/words?page=${currentPage}&per_page=50`);
+        const response = await fetch(apiUrl);
         const result = await response.json();
         
         if (result.success) {
@@ -831,9 +871,12 @@ function renderWords(words) {
         let examplesHtml = '-';
         if (word.examples && word.examples.length > 0) {
             examplesHtml = word.examples.map(ex => {
-                let exHtml = `<div><strong>${ex.exam_en || ''}</strong></div>`;
-                if (ex.exam_ko) {
-                    exHtml += `<div class="text-muted small">${ex.exam_ko}</div>`;
+                // AdminVocaBook: {en, ko}, VocaBook: {exam_en, exam_ko}
+                const examEn = ex.en || ex.exam_en || '';
+                const examKo = ex.ko || ex.exam_ko || '';
+                let exHtml = `<div><strong>${examEn}</strong></div>`;
+                if (examKo) {
+                    exHtml += `<div class="text-muted small">${examKo}</div>`;
                 }
                 return exHtml;
             }).join('<br>');
@@ -868,15 +911,21 @@ function renderWords(words) {
     document.querySelectorAll('.delete-word-btn').forEach(btn => {
         btn.addEventListener('click', async function() {
             if (!confirm('이 단어를 단어장에서 제거하시겠습니까?')) return;
-            
+
             const vocaId = btn.getAttribute('data-voca-id');
+
+            // book_type에 따라 다른 API 호출
+            const apiUrl = currentBookType === 'admin'
+                ? `/bookstore/api/admin_voca_book/${currentVocaBookId}/word/${vocaId}`
+                : `/bookstore/api/voca_book/${currentVocaBookId}/word/${vocaId}`;
+
             try {
-                const response = await fetch(`/bookstore/api/voca_book/${currentVocaBookId}/word/${vocaId}`, {
+                const response = await fetch(apiUrl, {
                     method: 'DELETE'
                 });
-                
+
                 const result = await response.json();
-                
+
                 if (response.ok && result.success) {
                     alert(result.message || '단어가 제거되었습니다.');
                     loadWords(true); // 목록 새로고침 (리셋)
@@ -980,24 +1029,29 @@ document.addEventListener('click', function(e) {
 document.getElementById('addWordBtn').addEventListener('click', async function() {
     const wordInput = document.getElementById('newWordInput');
     const word = wordInput.value.trim();
-    
+
     if (!word) {
         alert('단어를 입력해주세요.');
         return;
     }
-    
+
     // 자동완성에서 선택된 단어가 있는지 확인
     const selectedItem = document.querySelector('.autocomplete-item.active');
     let vocaId = null;
     let pronunciation = null;
-    
+
     if (selectedItem) {
         vocaId = selectedItem.getAttribute('data-voca-id');
         pronunciation = selectedItem.getAttribute('data-pronunciation');
     }
-    
+
+    // book_type에 따라 다른 API 호출
+    const apiUrl = currentBookType === 'admin'
+        ? `/bookstore/api/admin_voca_book/${currentVocaBookId}/word`
+        : `/bookstore/api/voca_book/${currentVocaBookId}/word`;
+
     try {
-        const response = await fetch(`/bookstore/api/voca_book/${currentVocaBookId}/word`, {
+        const response = await fetch(apiUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -1007,9 +1061,9 @@ document.getElementById('addWordBtn').addEventListener('click', async function()
                 pronunciation: pronunciation
             })
         });
-        
+
         const result = await response.json();
-        
+
         if (response.ok && result.success) {
             alert(result.message || '단어가 추가되었습니다.');
             wordInput.value = '';
