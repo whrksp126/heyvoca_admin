@@ -1,6 +1,38 @@
 {% extends 'base.html' %}
 {% block title %}단어장 목록{% endblock %}
 {% block content %}
+<style>
+.color-theme-swatch {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  cursor: pointer;
+  border: 3px solid transparent;
+  overflow: hidden;
+  position: relative;
+  transition: transform 0.15s, border-color 0.15s;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.10);
+}
+.color-theme-swatch:hover { transform: scale(1.10); }
+.color-theme-swatch.active {
+  border-color: #333;
+  box-shadow: 0 0 0 2px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.12);
+}
+.swatch-inner { width: 100%; height: 100%; }
+.swatch-check {
+  display: none;
+  position: absolute;
+  inset: 0;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.25);
+  background: rgba(0,0,0,0.08);
+}
+.color-theme-swatch.active .swatch-check { display: flex; }
+</style>
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h2>단어장 목록</h2>
     <div>
@@ -223,39 +255,54 @@
                         <input type="number" class="form-control" id="gem" name="gem" value="0" min="0">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">색상</label>
-                        <div class="row">
-                            <div class="col-4">
-                                <label for="colorMain" class="form-label small">Main</label>
-                                <div class="input-group">
-                                    <input type="color" class="form-control form-control-color" id="colorMain" name="color_main" value="#FF8DD4" style="max-width: 50px;">
-                                    <input type="text" class="form-control" id="colorMainHex" placeholder="#FF8DD4" maxlength="7" value="#FF8DD4">
-                                </div>
-                                <div class="mt-1">
-                                    <div id="colorMainPreview" style="width: 100%; height: 20px; border-radius: 3px; border: 1px solid #ddd; background-color: #FF8DD4;"></div>
-                                </div>
+                        <label class="form-label">색상 테마</label>
+                        <div class="d-flex gap-2 mt-1" id="vocaColorPalette">
+                            <div class="color-theme-swatch active" data-main="#FF88DC" data-sub="#FFD7F3" data-bg="#FFEEFA" title="Pink">
+                                <div class="swatch-inner" style="background: linear-gradient(145deg, #FF88DC 55%, #FFEEFA 55%);"></div>
+                                <div class="swatch-check">✓</div>
                             </div>
-                            <div class="col-4">
-                                <label for="colorSub" class="form-label small">Sub</label>
-                                <div class="input-group">
-                                    <input type="color" class="form-control form-control-color" id="colorSub" name="color_sub" value="#FFD2EF" style="max-width: 50px;">
-                                    <input type="text" class="form-control" id="colorSubHex" placeholder="#FFD2EF" maxlength="7" value="#FFD2EF">
-                                </div>
-                                <div class="mt-1">
-                                    <div id="colorSubPreview" style="width: 100%; height: 20px; border-radius: 3px; border: 1px solid #ddd; background-color: #FFD2EF;"></div>
-                                </div>
+                            <div class="color-theme-swatch" data-main="#9B8AFB" data-sub="#E9E6FF" data-bg="#F4F3FF" title="Purple">
+                                <div class="swatch-inner" style="background: linear-gradient(145deg, #9B8AFB 55%, #F4F3FF 55%);"></div>
+                                <div class="swatch-check">✓</div>
                             </div>
-                            <div class="col-4">
-                                <label for="colorBackground" class="form-label small">Background</label>
-                                <div class="input-group">
-                                    <input type="color" class="form-control form-control-color" id="colorBackground" name="color_background" value="#FFEFFA" style="max-width: 50px;">
-                                    <input type="text" class="form-control" id="colorBackgroundHex" placeholder="#FFEFFA" maxlength="7" value="#FFEFFA">
-                                </div>
-                                <div class="mt-1">
-                                    <div id="colorBackgroundPreview" style="width: 100%; height: 20px; border-radius: 3px; border: 1px solid #ddd; background-color: #FFEFFA;"></div>
-                                </div>
+                            <div class="color-theme-swatch" data-main="#53B1FD" data-sub="#D1E9FF" data-bg="#EFF8FF" title="Blue">
+                                <div class="swatch-inner" style="background: linear-gradient(145deg, #53B1FD 55%, #EFF8FF 55%);"></div>
+                                <div class="swatch-check">✓</div>
+                            </div>
+                            <div class="color-theme-swatch" data-main="#34E8D9" data-sub="#C1FDF8" data-bg="#E8FDFB" title="Mint">
+                                <div class="swatch-inner" style="background: linear-gradient(145deg, #34E8D9 55%, #E8FDFB 55%);"></div>
+                                <div class="swatch-check">✓</div>
+                            </div>
+                            <div class="color-theme-swatch" data-main="#FFA602" data-sub="#FEEFC7" data-bg="#FFF8E5" title="Yellow">
+                                <div class="swatch-inner" style="background: linear-gradient(145deg, #FFA602 55%, #FFF8E5 55%);"></div>
+                                <div class="swatch-check">✓</div>
                             </div>
                         </div>
+                        <div id="vocaColorPreviewCard" style="
+                            margin-top: 12px;
+                            border-radius: 14px;
+                            padding: 12px 16px;
+                            background-color: #FFEEFA;
+                            border: 1.5px solid #FFD7F3;
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            transition: background-color 0.2s, border-color 0.2s;
+                        ">
+                            <div id="vocaPreviewDot" style="
+                                width: 36px; height: 36px;
+                                border-radius: 50%;
+                                background-color: #FF88DC;
+                                flex-shrink: 0;
+                                transition: background-color 0.2s;
+                            "></div>
+                            <div>
+                                <div id="vocaPreviewThemeName" style="font-weight: 700; font-size: 13px; color: #FF88DC; transition: color 0.2s;">Pink</div>
+                            </div>
+                        </div>
+                        <input type="hidden" id="colorMain" name="color_main" value="#FF88DC">
+                        <input type="hidden" id="colorSub" name="color_sub" value="#FFD7F3">
+                        <input type="hidden" id="colorBackground" name="color_background" value="#FFEEFA">
                     </div>
                     <div class="mb-3">
                         <div class="form-check">
@@ -618,35 +665,36 @@ document.querySelectorAll('.delete-bookstore-btn').forEach(btn => {
     });
 });
 
-// 색상 입력 이벤트 리스너
-function setupVocaColorListeners(prefix) {
-    const colorInput = document.getElementById(prefix);
-    const hexInput = document.getElementById(prefix + 'Hex');
-    const preview = document.getElementById(prefix + 'Preview');
-    
-    // color picker 변경 시
-    colorInput.addEventListener('input', function() {
-        hexInput.value = this.value;
-        preview.style.backgroundColor = this.value;
-    });
-    
-    // hex 입력 시
-    hexInput.addEventListener('input', function() {
-        let value = this.value;
-        if (!value.startsWith('#')) {
-            value = '#' + value;
-        }
-        if (/^#[0-9A-Fa-f]{6}$/.test(value)) {
-            colorInput.value = value;
-            preview.style.backgroundColor = value;
-        }
+// 색상 팔레트
+const VOCA_THEMES = [
+    { main: "#FF88DC", sub: "#FFD7F3", bg: "#FFEEFA", name: "Pink" },
+    { main: "#9B8AFB", sub: "#E9E6FF", bg: "#F4F3FF", name: "Purple" },
+    { main: "#53B1FD", sub: "#D1E9FF", bg: "#EFF8FF", name: "Blue" },
+    { main: "#34E8D9", sub: "#C1FDF8", bg: "#E8FDFB", name: "Mint" },
+    { main: "#FFA602", sub: "#FEEFC7", bg: "#FFF8E5", name: "Yellow" },
+];
+
+function applyVocaTheme(idx) {
+    const theme = VOCA_THEMES[idx];
+    document.getElementById('colorMain').value = theme.main;
+    document.getElementById('colorSub').value = theme.sub;
+    document.getElementById('colorBackground').value = theme.bg;
+
+    const card = document.getElementById('vocaColorPreviewCard');
+    card.style.backgroundColor = theme.bg;
+    card.style.borderColor = theme.sub;
+    document.getElementById('vocaPreviewDot').style.backgroundColor = theme.main;
+    document.getElementById('vocaPreviewThemeName').style.color = theme.main;
+    document.getElementById('vocaPreviewThemeName').textContent = theme.name;
+
+    document.querySelectorAll('#vocaColorPalette .color-theme-swatch').forEach((el, i) => {
+        el.classList.toggle('active', i === idx);
     });
 }
 
-// 이벤트 리스너 설정
-setupVocaColorListeners('colorMain');
-setupVocaColorListeners('colorSub');
-setupVocaColorListeners('colorBackground');
+document.querySelectorAll('#vocaColorPalette .color-theme-swatch').forEach((el, i) => {
+    el.addEventListener('click', () => applyVocaTheme(i));
+});
 
 // 단어장 추가 - 엑셀 파일 미리보기
 document.getElementById('excelFile').addEventListener('change', async function(e) {

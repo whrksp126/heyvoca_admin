@@ -26,39 +26,55 @@
             <input type="number" class="form-control" id="editGem" name="gem" min="0" value="0">
           </div>
           <div class="mb-3">
-            <label class="form-label">색상</label>
-            <div class="row">
-              <div class="col-4">
-                <label for="editColorMain" class="form-label small">Main</label>
-                <div class="input-group">
-                  <input type="color" class="form-control form-control-color" id="editColorMain" name="color_main" style="max-width: 50px;">
-                  <input type="text" class="form-control" id="editColorMainHex" placeholder="#FF8DD4" maxlength="7">
-                </div>
-                <div class="mt-1">
-                  <div id="editColorMainPreview" style="width: 100%; height: 20px; border-radius: 3px; border: 1px solid #ddd;"></div>
-                </div>
+            <label class="form-label">색상 테마</label>
+            <div class="d-flex gap-2 mt-1" id="editColorPalette">
+              <div class="color-theme-swatch" data-main="#FF88DC" data-sub="#FFD7F3" data-bg="#FFEEFA" title="Pink">
+                <div class="swatch-inner" style="background: linear-gradient(145deg, #FF88DC 55%, #FFEEFA 55%);"></div>
+                <div class="swatch-check">✓</div>
               </div>
-              <div class="col-4">
-                <label for="editColorSub" class="form-label small">Sub</label>
-                <div class="input-group">
-                  <input type="color" class="form-control form-control-color" id="editColorSub" name="color_sub" style="max-width: 50px;">
-                  <input type="text" class="form-control" id="editColorSubHex" placeholder="#FFD2EF" maxlength="7">
-                </div>
-                <div class="mt-1">
-                  <div id="editColorSubPreview" style="width: 100%; height: 20px; border-radius: 3px; border: 1px solid #ddd;"></div>
-                </div>
+              <div class="color-theme-swatch" data-main="#9B8AFB" data-sub="#E9E6FF" data-bg="#F4F3FF" title="Purple">
+                <div class="swatch-inner" style="background: linear-gradient(145deg, #9B8AFB 55%, #F4F3FF 55%);"></div>
+                <div class="swatch-check">✓</div>
               </div>
-              <div class="col-4">
-                <label for="editColorBackground" class="form-label small">Background</label>
-                <div class="input-group">
-                  <input type="color" class="form-control form-control-color" id="editColorBackground" name="color_background" style="max-width: 50px;">
-                  <input type="text" class="form-control" id="editColorBackgroundHex" placeholder="#FFEFFA" maxlength="7">
-                </div>
-                <div class="mt-1">
-                  <div id="editColorBackgroundPreview" style="width: 100%; height: 20px; border-radius: 3px; border: 1px solid #ddd;"></div>
-                </div>
+              <div class="color-theme-swatch" data-main="#53B1FD" data-sub="#D1E9FF" data-bg="#EFF8FF" title="Blue">
+                <div class="swatch-inner" style="background: linear-gradient(145deg, #53B1FD 55%, #EFF8FF 55%);"></div>
+                <div class="swatch-check">✓</div>
+              </div>
+              <div class="color-theme-swatch" data-main="#34E8D9" data-sub="#C1FDF8" data-bg="#E8FDFB" title="Mint">
+                <div class="swatch-inner" style="background: linear-gradient(145deg, #34E8D9 55%, #E8FDFB 55%);"></div>
+                <div class="swatch-check">✓</div>
+              </div>
+              <div class="color-theme-swatch" data-main="#FFA602" data-sub="#FEEFC7" data-bg="#FFF8E5" title="Yellow">
+                <div class="swatch-inner" style="background: linear-gradient(145deg, #FFA602 55%, #FFF8E5 55%);"></div>
+                <div class="swatch-check">✓</div>
               </div>
             </div>
+            <!-- 미리보기 카드 -->
+            <div id="editColorPreviewCard" style="
+              margin-top: 12px;
+              border-radius: 14px;
+              padding: 12px 16px;
+              background-color: #FFEEFA;
+              border: 1.5px solid #FFD7F3;
+              display: flex;
+              align-items: center;
+              gap: 12px;
+              transition: background-color 0.2s, border-color 0.2s;
+            ">
+              <div id="editPreviewDot" style="
+                width: 36px; height: 36px;
+                border-radius: 50%;
+                background-color: #FF88DC;
+                flex-shrink: 0;
+                transition: background-color 0.2s;
+              "></div>
+              <div>
+                <div id="editPreviewThemeName" style="font-weight: 700; font-size: 13px; color: #FF88DC; transition: color 0.2s;">Pink</div>
+              </div>
+            </div>
+            <input type="hidden" id="editColorMain" name="color_main" value="#FF88DC">
+            <input type="hidden" id="editColorSub" name="color_sub" value="#FFD7F3">
+            <input type="hidden" id="editColorBackground" name="color_background" value="#FFEEFA">
           </div>
           <div class="mb-3">
             <div class="form-check">
@@ -79,129 +95,95 @@
 </div>
 
 <script>
+const EDIT_THEMES = [
+  { main: "#FF88DC", sub: "#FFD7F3", bg: "#FFEEFA", name: "Pink" },
+  { main: "#9B8AFB", sub: "#E9E6FF", bg: "#F4F3FF", name: "Purple" },
+  { main: "#53B1FD", sub: "#D1E9FF", bg: "#EFF8FF", name: "Blue" },
+  { main: "#34E8D9", sub: "#C1FDF8", bg: "#E8FDFB", name: "Mint" },
+  { main: "#FFA602", sub: "#FEEFC7", bg: "#FFF8E5", name: "Yellow" },
+];
+
+function applyEditTheme(idx) {
+  const theme = EDIT_THEMES[idx];
+  document.getElementById('editColorMain').value = theme.main;
+  document.getElementById('editColorSub').value = theme.sub;
+  document.getElementById('editColorBackground').value = theme.bg;
+
+  const card = document.getElementById('editColorPreviewCard');
+  card.style.backgroundColor = theme.bg;
+  card.style.borderColor = theme.sub;
+  document.getElementById('editPreviewDot').style.backgroundColor = theme.main;
+  document.getElementById('editPreviewThemeName').style.color = theme.main;
+  document.getElementById('editPreviewThemeName').textContent = theme.name;
+
+  document.querySelectorAll('#editColorPalette .color-theme-swatch').forEach((el, i) => {
+    el.classList.toggle('active', i === idx);
+  });
+}
+
+document.querySelectorAll('#editColorPalette .color-theme-swatch').forEach((el, i) => {
+  el.addEventListener('click', () => applyEditTheme(i));
+});
+
 // 수정 모달에서 데이터 로드
 document.getElementById('editBookstoreModal').addEventListener('show.bs.modal', function (event) {
-    const button = event.relatedTarget;
-    const id = button.getAttribute('data-id');
-    
-    // 현재 행에서 데이터 가져오기
-    const row = button.closest('tr');
-    const name = row.cells[0].textContent.trim();
-    const isVisible = row.cells[3].textContent.trim() === '공개';
-    const gem = row.cells[4].textContent.trim();
-    
-    // 카테고리 ID 가져오기
-    const categoryId = row.getAttribute('data-category-id') || '';
-    
-    // 색상 데이터 가져오기 (data-color 속성에서)
-    const colorBoxes = row.cells[7].querySelectorAll('div[data-color]');
-    
-    // 무조건 3개의 색상이 JSON 형태로 저장되어 있음
-    const mainColor = colorBoxes[0]?.getAttribute('data-color') || '#000000';
-    const subColor = colorBoxes[1]?.getAttribute('data-color') || '#000000';
-    const backgroundColor = colorBoxes[2]?.getAttribute('data-color') || '#ffffff';
-    
-    // 폼에 데이터 설정
-    document.getElementById('editBookstoreId').value = id;
-    document.getElementById('editDisplayName').value = name;
-    document.getElementById('editGem').value = gem;
-    document.getElementById('editColorMain').value = mainColor;
-    document.getElementById('editColorSub').value = subColor;
-    document.getElementById('editColorBackground').value = backgroundColor;
-    document.getElementById('editIsVisible').checked = isVisible;
-    document.getElementById('editCategoryId').value = categoryId;
-    
-    // hex 입력 필드와 미리보기 업데이트
-    updateColorFields('editColorMain', mainColor);
-    updateColorFields('editColorSub', subColor);
-    updateColorFields('editColorBackground', backgroundColor);
+  const button = event.relatedTarget;
+  const id = button.getAttribute('data-id');
+
+  const row = button.closest('tr');
+  const name = row.cells[0].textContent.trim();
+  const isVisible = row.cells[3].textContent.trim() === '공개';
+  const gem = row.cells[4].textContent.trim();
+  const categoryId = row.getAttribute('data-category-id') || '';
+
+  const colorBoxes = row.cells[7].querySelectorAll('div[data-color]');
+  const mainColor = colorBoxes[0]?.getAttribute('data-color') || '#FF88DC';
+
+  document.getElementById('editBookstoreId').value = id;
+  document.getElementById('editDisplayName').value = name;
+  document.getElementById('editGem').value = gem;
+  document.getElementById('editIsVisible').checked = isVisible;
+  document.getElementById('editCategoryId').value = categoryId;
+
+  // 현재 main 색상과 가장 가까운 테마 선택
+  const matchIdx = EDIT_THEMES.findIndex(t => t.main.toLowerCase() === mainColor.toLowerCase());
+  applyEditTheme(matchIdx >= 0 ? matchIdx : 0);
 });
 
 // 수정 폼 제출
 document.getElementById('editBookstoreForm').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    
-    const id = document.getElementById('editBookstoreId').value;
-    
-    // 색상 값 가져오기 (빈 값이면 기본값 사용)
-    const mainColor = document.getElementById('editColorMain').value || '#000000';
-    const subColor = document.getElementById('editColorSub').value || '#000000';
-    const bgColor = document.getElementById('editColorBackground').value || '#ffffff';
-    
-    // 선택된 카테고리 ID 가져오기
-    const categoryId = document.getElementById('editCategoryId').value || null;
-    
-    const data = {
-        name: document.getElementById('editDisplayName').value,
-        category_id: categoryId ? parseInt(categoryId) : null,
-        gem: parseInt(document.getElementById('editGem').value) || 0,
-        color: {
-            main: mainColor,
-            sub: subColor,
-            background: bgColor
-        },
-        is_visible: document.getElementById('editIsVisible').checked
-    };
-    
-    try {
-        const response = await fetch(`/bookstore/api/bookstore/${id}`, {
-            method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data)
-        });
-        
-        if (response.ok) {
-            location.reload();
-        } else {
-            alert('수정에 실패했습니다.');
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        alert('수정 중 오류가 발생했습니다.');
+  e.preventDefault();
+
+  const id = document.getElementById('editBookstoreId').value;
+  const categoryId = document.getElementById('editCategoryId').value || null;
+
+  const data = {
+    name: document.getElementById('editDisplayName').value,
+    category_id: categoryId ? parseInt(categoryId) : null,
+    gem: parseInt(document.getElementById('editGem').value) || 0,
+    color: {
+      main: document.getElementById('editColorMain').value,
+      sub: document.getElementById('editColorSub').value,
+      background: document.getElementById('editColorBackground').value
+    },
+    is_visible: document.getElementById('editIsVisible').checked
+  };
+
+  try {
+    const response = await fetch(`/bookstore/api/bookstore/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+
+    if (response.ok) {
+      location.reload();
+    } else {
+      alert('수정에 실패했습니다.');
     }
+  } catch (error) {
+    console.error('Error:', error);
+    alert('수정 중 오류가 발생했습니다.');
+  }
 });
-
-// 색상 필드 업데이트 함수
-function updateColorFields(prefix, color) {
-    const colorInput = document.getElementById(prefix);
-    const hexInput = document.getElementById(prefix + 'Hex');
-    const preview = document.getElementById(prefix + 'Preview');
-    
-    // 항상 색상 설정 (기본값이라도 있음)
-    colorInput.value = color;
-    hexInput.value = color;
-    preview.style.backgroundColor = color;
-}
-
-// 색상 입력 이벤트 리스너
-function setupColorListeners(prefix) {
-    const colorInput = document.getElementById(prefix);
-    const hexInput = document.getElementById(prefix + 'Hex');
-    const preview = document.getElementById(prefix + 'Preview');
-    
-    // color picker 변경 시
-    colorInput.addEventListener('input', function() {
-        hexInput.value = this.value;
-        preview.style.backgroundColor = this.value;
-    });
-    
-    // hex 입력 시
-    hexInput.addEventListener('input', function() {
-        let value = this.value;
-        if (!value.startsWith('#')) {
-            value = '#' + value;
-        }
-        if (/^#[0-9A-Fa-f]{6}$/.test(value)) {
-            colorInput.value = value;
-            preview.style.backgroundColor = value;
-        }
-    });
-}
-
-// 이벤트 리스너 설정
-setupColorListeners('editColorMain');
-setupColorListeners('editColorSub');
-setupColorListeners('editColorBackground');
-</script> 
+</script>

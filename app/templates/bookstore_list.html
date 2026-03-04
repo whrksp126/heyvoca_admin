@@ -1,6 +1,38 @@
 {% extends 'base.html' %}
 {% block title %}북스토어 관리{% endblock %}
 {% block content %}
+<style>
+.color-theme-swatch {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  cursor: pointer;
+  border: 3px solid transparent;
+  overflow: hidden;
+  position: relative;
+  transition: transform 0.15s, border-color 0.15s;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.10);
+}
+.color-theme-swatch:hover { transform: scale(1.10); }
+.color-theme-swatch.active {
+  border-color: #333;
+  box-shadow: 0 0 0 2px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.12);
+}
+.swatch-inner { width: 100%; height: 100%; }
+.swatch-check {
+  display: none;
+  position: absolute;
+  inset: 0;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.25);
+  background: rgba(0,0,0,0.08);
+}
+.color-theme-swatch.active .swatch-check { display: flex; }
+</style>
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h2>북스토어 관리</h2>
     <!-- <a href="{{ url_for('bookstore.voca_books_list') }}" class="btn btn-primary">+ 단어장 등록</a> -->
