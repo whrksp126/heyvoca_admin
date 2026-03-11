@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI 단어장 생성 - 구상안</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <style>
+    body { background: #f8f9fa; }
+    .card { border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.07); }
+    .badge-ai { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; font-size: 0.7rem; padding: 3px 8px; border-radius: 20px; vertical-align: middle; }
+    .preview-section { display: none; }
+    .preview-section.show { display: block; }
+    .spinner-overlay { display: none; position: fixed; inset: 0; background: rgba(255,255,255,0.7); z-index: 999; align-items: center; justify-content: center; flex-direction: column; gap: 12px; }
+    .spinner-overlay.show { display: flex; }
+    .word-row td { vertical-align: middle; }
+    .example-text { font-size: 0.85rem; color: #555; }
+    .meaning-badge { background: #e0e7ff; color: #3730a3; border-radius: 6px; padding: 2px 8px; font-size: 0.82rem; display: inline-block; margin: 1px; }
+    .step-badge { background: #6366f1; color: #fff; border-radius: 50%; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold; margin-right: 8px; }
+    .level-dropdown { position: relative; }
+    .level-dropdown input { cursor: pointer; background: #fff; }
+    .level-options { display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid #d1d5db; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 100; overflow: hidden; margin-top: 4px; }
+    .level-options.show { display: block; }
+    .level-option { padding: 10px 14px; cursor: pointer; transition: background 0.1s; font-size: 0.93rem; }
+    .level-option:hover { background: #ede9fe; color: #4f46e5; }
+    .level-option.selected { background: #ede9fe; color: #4f46e5; font-weight: 600; }
+    .save-bar { position: sticky; bottom: 0; background: #fff; border-top: 1px solid #e5e7eb; padding: 14px 0; z-index: 10; }
+    /* 모달 예문 아이템 */
+    .example-item { background: #f8f9fa; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; position: relative; }
+    .example-item .btn-remove-ex { position: absolute; top: 8px; right: 8px; }
+    .meaning-item { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  </style>
+</head>
+<body>
+
+<!-- 로딩 오버레이 -->
+<div class="spinner-overlay" id="loadingOverlay">
+  <div class="spinner-border text-primary" style="width:3rem;height:3rem;"></div>
+  <div class="fw-semibold text-secondary">AI가 단어를 생성하고 있어요...</div>
+</div>
+
+<!-- 수정 모달 -->
+<div class="modal fade" id="editModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">단어 수정</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="aiWordSection" class="mb-3" style="display:none;">
+          <button class="btn btn-outline-primary w-100" onclick="aiGenerateWord()">✨ AI로 단어 자동 생성</button>
+          <div class="form-text text-center">기존 목록에 없는 단어를 AI가 골라서 채워드려요.</div>
+        </div>
+        <div id="aiLoadingBar" class="mb-3" style="display:none;">
+          <div class="d-flex align-items-center gap-2 text-primary">
+            <div class="spinner-border spinner-border-sm"></div>
+            <span class="small">AI가 단어를 생성하고 있어요...</span>
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">단어</label>
+          <input type="text" class="form-control" id="editWord" placeholder="단어를 입력하세요">
+        </div>
+
+        <label class="form-label fw-semibold">뜻</label>
+        <div id="editMeanings" class="mb-3"></div>
+        <button class="btn btn-outline-secondary btn-sm mb-3" onclick="addMeaning()">+ 뜻 추가</button>
+
+        <label class="form-label fw-semibold">예문</label>
+        <div id="editExamples" class="mb-2"></div>
+        <button class="btn btn-outline-secondary btn-sm" onclick="addExample()">+ 예문 추가</button>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">취소</button>
+        <button type="button" class="btn btn-primary" onclick="saveEdit()">저장</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="container py-4" style="max-width:900px;">
+
+  <!-- 헤더 -->
+  <div class="mb-4 d-flex align-items-center gap-2">
+    <h4 class="mb-0 fw-bold">AI 단어장 생성</h4>
+    <span class="badge-ai">✨ AI</span>
+  </div>
+
+  <!-- STEP 1: 조건 입력 -->
+  <div class="card p-4 mb-3">
+    <div class="mb-3">
+      <span class="step-badge">1</span>
+      <span class="fw-semibold">단어장 조건 설정</span>
+    </div>
+
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label fw-semibold">단어장 이름 <span class="text-danger">*</span></label>
+        <input type="text" class="form-control" id="bookNm" placeholder="예: 여행 영어 필수 단어">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label fw-semibold">단어 개수 <span class="text-danger">*</span></label>
+        <div class="input-group">
+          <input type="number" class="form-control" id="wordCount" value="10" min="1" max="50">
+          <span class="input-group-text">개</span>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label fw-semibold">레벨</label>
+        <div class="level-dropdown">
+          <input type="text" class="form-control" id="levelDisplay" placeholder="레벨 선택" readonly
+            onclick="toggleLevelDropdown()">
+          <input type="hidden" id="level" value="">
+          <div class="level-options" id="levelOptions">
+            <div class="level-option" onclick="selectLevel('초등학생')">초등학생</div>
+            <div class="level-option" onclick="selectLevel('중학생')">중학생</div>
+            <div class="level-option" onclick="selectLevel('고등학생')">고등학생</div>
+            <div class="level-option" onclick="selectLevel('대학생/성인')">대학생/성인</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label fw-semibold">카테고리</label>
+        <select class="form-select" id="category">
+          <option value="">선택 안 함</option>
+          <option>여행</option>
+          <option>비즈니스</option>
+          <option>일상생활</option>
+          <option>음식</option>
+          <option>쇼핑</option>
+          <option>의료</option>
+          <option>교육</option>
+        </select>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label fw-semibold">상황 / 주제</label>
+        <input type="text" class="form-control" id="situation" placeholder="예: 공항, 호텔 체크인">
+      </div>
+    </div>
+
+    <div class="mt-4 d-flex justify-content-end">
+      <button class="btn btn-primary px-4" onclick="generateWords()">
+        ✨ AI로 단어 생성하기
+      </button>
+    </div>
+  </div>
+
+  <!-- STEP 2: 미리보기 -->
+  <div class="preview-section" id="previewSection">
+    <div class="card p-4 mb-3">
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <div>
+          <span class="step-badge">2</span>
+          <span class="fw-semibold">생성 결과 확인 및 수정</span>
+          <span class="text-muted ms-2 small" id="previewCount"></span>
+        </div>
+        <div class="d-flex gap-2">
+          <button class="btn btn-outline-primary btn-sm" onclick="openAddModal()">+ 단어 추가</button>
+          <button class="btn btn-outline-secondary btn-sm" onclick="generateWords()">🔄 다시 생성</button>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-hover align-middle">
+          <thead class="table-light">
+            <tr>
+              <th style="width:36px">#</th>
+              <th>단어</th>
+              <th>뜻</th>
+              <th>예문</th>
+              <th style="width:90px"></th>
+            </tr>
+          </thead>
+          <tbody id="wordTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 저장 바 -->
+    <div class="save-bar">
+      <div class="d-flex justify-content-between align-items-center">
+        <div class="d-flex gap-2">
+          <button class="btn btn-outline-secondary" onclick="resetAll()">취소</button>
+          <button class="btn btn-success px-4" onclick="saveWords()">💾 단어장 저장</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  function toggleLevelDropdown() {
+    document.getElementById('levelOptions').classList.toggle('show');
+  }
+
+  function selectLevel(val) {
+    document.getElementById('level').value = val;
+    document.getElementById('levelDisplay').value = val;
+    document.querySelectorAll('.level-option').forEach(el => {
+      el.classList.toggle('selected', el.textContent === val);
+    });
+    document.getElementById('levelOptions').classList.remove('show');
+  }
+
+  // 외부 클릭 시 드롭다운 닫기
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.level-dropdown')) {
+      document.getElementById('levelOptions').classList.remove('show');
+    }
+  });
+
+  const DUMMY_WORDS = [
+    { word: 'airport', meanings: ['공항'], examples: [{ en: 'We arrived at the airport two hours early.', ko: '우리는 공항에 두 시간 일찍 도착했다.' }] },
+    { word: 'boarding pass', meanings: ['탑승권'], examples: [{ en: 'Please show your boarding pass at the gate.', ko: '게이트에서 탑승권을 보여주세요.' }] },
+    { word: 'customs', meanings: ['세관', '관세'], examples: [{ en: 'You need to declare goods at customs.', ko: '세관에서 물품을 신고해야 합니다.' }] },
+    { word: 'itinerary', meanings: ['여행 일정', '여정'], examples: [{ en: 'Our travel itinerary includes three cities.', ko: '우리 여행 일정에는 세 도시가 포함되어 있다.' }] },
+    { word: 'layover', meanings: ['경유', '환승 대기'], examples: [{ en: 'We have a four-hour layover in Tokyo.', ko: '도쿄에서 네 시간 경유가 있다.' }] },
+    { word: 'check-in', meanings: ['체크인', '탑승 수속'], examples: [{ en: 'Online check-in opens 24 hours before departure.', ko: '온라인 체크인은 출발 24시간 전에 열립니다.' }] },
+    { word: 'luggage', meanings: ['수하물', '짐'], examples: [{ en: 'My luggage was lost by the airline.', ko: '항공사에서 내 수하물을 잃어버렸다.' }] },
+    { word: 'departure', meanings: ['출발'], examples: [{ en: 'The departure is scheduled for 9 AM.', ko: '출발은 오전 9시로 예정되어 있다.' }] },
+    { word: 'arrival', meanings: ['도착'], examples: [{ en: 'The arrival time has been delayed.', ko: '도착 시간이 지연되었다.' }] },
+    { word: 'passport', meanings: ['여권'], examples: [{ en: "Don't forget to bring your passport.", ko: '여권을 꼭 챙기세요.' }] },
+  ];
+
+  // 단어별 AI 더미 데이터
+  const DUMMY_WORD_AI = {
+    'apple':    { meanings: ['사과'], examples: [{ en: 'She ate an apple for breakfast.', ko: '그녀는 아침으로 사과를 먹었다.' }] },
+    'default':  { meanings: ['(뜻)'], examples: [{ en: '(Example sentence.)', ko: '(예문 한국어 번역)' }] },
+  };
+
+  let generatedWords = [];
+  let editingIndex = -1;
+  let editModal;
+
+  document.addEventListener('DOMContentLoaded', () => {
+    editModal = new bootstrap.Modal(document.getElementById('editModal'));
+  });
+
+  function generateWords() {
+    const bookNm = document.getElementById('bookNm').value.trim();
+    if (!bookNm) { alert('단어장 이름을 입력해주세요.'); return; }
+
+    document.getElementById('loadingOverlay').classList.add('show');
+
+    setTimeout(() => {
+      const cnt = Math.min(parseInt(document.getElementById('wordCount').value) || 10, DUMMY_WORDS.length);
+      generatedWords = DUMMY_WORDS.slice(0, cnt).map(w => ({ ...w }));
+      renderTable();
+      document.getElementById('loadingOverlay').classList.remove('show');
+      document.getElementById('previewSection').classList.add('show');
+      document.getElementById('previewSection').scrollIntoView({ behavior: 'smooth' });
+    }, 1800);
+  }
+
+  function renderTable() {
+    const tbody = document.getElementById('wordTableBody');
+    tbody.innerHTML = generatedWords.map((w, i) => `
+      <tr class="word-row">
+        <td class="text-muted small">${i + 1}</td>
+        <td><strong>${w.word}</strong></td>
+        <td>${w.meanings.map(m => `<span class="meaning-badge">${m}</span>`).join('')}</td>
+        <td>
+          ${w.examples.map(e => `
+            <div class="example-text">${e.en}</div>
+            <div class="example-text text-muted">${e.ko}</div>
+          `).join('')}
+        </td>
+        <td>
+          <div class="d-flex gap-1">
+            <button class="btn btn-outline-primary btn-sm" onclick="openEdit(${i})" title="수정">✏️</button>
+            <button class="btn btn-outline-danger btn-sm" onclick="deleteWord(${i})" title="삭제">🗑️</button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+
+    document.getElementById('previewCount').textContent = `${generatedWords.length}개 단어`;
+  }
+
+  function deleteWord(i) {
+    generatedWords.splice(i, 1);
+    renderTable();
+  }
+
+  // ── 모달 공통 렌더 ──
+  function renderModalMeanings(meanings) {
+    document.getElementById('editMeanings').innerHTML = meanings.map((m, mi) => `
+      <div class="meaning-item">
+        <input type="text" class="form-control form-control-sm" value="${m}" id="meaning-${mi}" placeholder="한국어 뜻">
+        <button class="btn btn-outline-danger btn-sm" onclick="removeMeaning(${mi})">✕</button>
+      </div>`).join('');
+  }
+
+  function renderModalExamples(examples) {
+    document.getElementById('editExamples').innerHTML = examples.map((e, ei) => `
+      <div class="example-item" id="example-${ei}">
+        <button class="btn btn-outline-danger btn-sm btn-remove-ex" onclick="removeExample(${ei})">✕</button>
+        <div class="mb-2">
+          <label class="form-label small mb-1 fw-semibold">영문</label>
+          <input type="text" class="form-control form-control-sm" value="${e.en}" id="ex-en-${ei}" placeholder="English sentence">
+        </div>
+        <div>
+          <label class="form-label small mb-1 fw-semibold">한국어</label>
+          <input type="text" class="form-control form-control-sm" value="${e.ko}" id="ex-ko-${ei}" placeholder="한국어 해석">
+        </div>
+      </div>`).join('');
+  }
+
+  // ── 수정 모달 ──
+  function openEdit(i) {
+    editingIndex = i;
+    const w = generatedWords[i];
+    document.querySelector('#editModal .modal-title').textContent = '단어 수정';
+    document.getElementById('editWord').value = w.word;
+    document.getElementById('editWord').readOnly = false;
+    document.getElementById('aiWordSection').style.display = 'none';
+    renderModalMeanings(w.meanings);
+    renderModalExamples(w.examples);
+    editModal.show();
+  }
+
+  function addMeaning() {
+    const meanings = collectMeanings();
+    meanings.push('');
+    renderModalMeanings(meanings);
+  }
+
+  function removeMeaning(mi) {
+    const meanings = collectMeanings();
+    meanings.splice(mi, 1);
+    renderModalMeanings(meanings);
+  }
+
+  function addExample() {
+    const examples = collectExamples();
+    examples.push({ en: '', ko: '' });
+    renderModalExamples(examples);
+  }
+
+  function removeExample(ei) {
+    const examples = collectExamples();
+    examples.splice(ei, 1);
+    renderModalExamples(examples);
+  }
+
+  function collectMeanings() {
+    const arr = [];
+    document.querySelectorAll('#editMeanings .meaning-item input').forEach(inp => arr.push(inp.value));
+    return arr;
+  }
+
+  function collectExamples() {
+    const arr = [];
+    document.querySelectorAll('#editExamples .example-item').forEach((el, ei) => {
+      arr.push({
+        en: document.getElementById(`ex-en-${ei}`)?.value || '',
+        ko: document.getElementById(`ex-ko-${ei}`)?.value || ''
+      });
+    });
+    return arr;
+  }
+
+  function saveEdit() {
+    const word = document.getElementById('editWord').value.trim();
+    if (!word) { alert('단어를 입력해주세요.'); return; }
+
+    const meanings = collectMeanings().filter(m => m.trim());
+    const examples = collectExamples().filter(e => e.en || e.ko);
+
+    if (editingIndex === -1) {
+      generatedWords.push({ word, meanings, examples });
+    } else {
+      Object.assign(generatedWords[editingIndex], { word, meanings, examples });
+    }
+
+    editModal.hide();
+    renderTable();
+  }
+
+  // ── 단어 추가 모달 ──
+  function openAddModal() {
+    editingIndex = -1;
+    document.querySelector('#editModal .modal-title').textContent = '단어 추가';
+    document.getElementById('editWord').value = '';
+    document.getElementById('editWord').readOnly = false;
+    document.getElementById('aiWordSection').style.display = 'block';
+    document.getElementById('aiLoadingBar').style.display = 'none';
+    renderModalMeanings(['']);
+    renderModalExamples([{ en: '', ko: '' }]);
+    editModal.show();
+  }
+
+  // ── AI가 단어+뜻+예문 모두 생성 ──
+  const EXTRA_DUMMY = [
+    { word: 'concierge', meanings: ['컨시어지', '안내 직원'], examples: [{ en: 'Ask the concierge for restaurant recommendations.', ko: '컨시어지에게 레스토랑 추천을 부탁하세요.' }] },
+    { word: 'turbulence', meanings: ['난기류'], examples: [{ en: 'The flight hit severe turbulence.', ko: '비행기가 심한 난기류를 만났다.' }] },
+    { word: 'visa', meanings: ['비자', '입국 허가'], examples: [{ en: 'You need a visa to enter this country.', ko: '이 나라에 입국하려면 비자가 필요합니다.' }] },
+    { word: 'souvenir', meanings: ['기념품'], examples: [{ en: 'She bought a souvenir for her friend.', ko: '그녀는 친구를 위해 기념품을 샀다.' }] },
+    { word: 'terminal', meanings: ['터미널', '탑승동'], examples: [{ en: 'Our gate is in Terminal 2.', ko: '우리 게이트는 2터미널에 있습니다.' }] },
+  ];
+
+  function aiGenerateWord() {
+    const existing = new Set(generatedWords.map(w => w.word.toLowerCase()));
+    const candidates = EXTRA_DUMMY.filter(w => !existing.has(w.word.toLowerCase()));
+
+    document.getElementById('aiLoadingBar').style.display = 'block';
+    document.getElementById('aiWordSection').style.display = 'none';
+
+    setTimeout(() => {
+      let result;
+      if (candidates.length > 0) {
+        result = candidates[Math.floor(Math.random() * candidates.length)];
+      } else {
+        result = { word: 'journey', meanings: ['여행', '여정'], examples: [{ en: 'It was a long journey.', ko: '긴 여정이었다.' }] };
+      }
+      document.getElementById('editWord').value = result.word;
+      renderModalMeanings(result.meanings);
+      renderModalExamples(result.examples);
+      document.getElementById('aiLoadingBar').style.display = 'none';
+      document.getElementById('aiWordSection').style.display = 'block';
+    }, 1200);
+  }
+
+  function saveWords() {
+    if (!generatedWords.length) { alert('저장할 단어가 없습니다.'); return; }
+    alert(`"${document.getElementById('bookNm').value}" 단어장이 저장되었습니다!\n${generatedWords.length}개 단어\n\n실제 구현 시 DB에 저장됩니다.`);
+  }
+
+  function resetAll() {
+    document.getElementById('previewSection').classList.remove('show');
+    generatedWords = [];
+  }
+</script>
+</body>
+</html>
