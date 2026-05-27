@@ -23,9 +23,8 @@
             <th style="width: 3%;"></th>
             <th style="width: 12%;">단어</th>
             <th style="width: 12%;">발음</th>
-            <th style="width: 8%;">레벨</th>
             <th style="width: 35%;">뜻 (요약)</th>
-            <th style="width: 10%;">동사 변형</th>
+            <th style="width: 15%;">동사 변형</th>
             <th style="width: 20%;">관리</th>
         </tr>
     </thead>
@@ -40,18 +39,11 @@
             <td><strong>{{ voca.word }}</strong></td>
             <td>{{ voca.pronunciation or '-' }}</td>
             <td>
-                {% if voca.level is not none and voca.level != '' %}
-                    <span class="badge bg-info">{{ voca.level }}</span>
-                {% else %}
-                    <span class="text-muted">-</span>
-                {% endif %}
-            </td>
-            <td>
-                {% if voca.voca_meanings %}
-                    {% for meaning_map in voca.voca_meanings[:3] %}
-                        {{ meaning_map.meaning.meaning }}{% if not loop.last %}, {% endif %}
+                {% if voca.meanings %}
+                    {% for meaning in voca.meanings[:3] %}
+                        {{ meaning }}{% if not loop.last %}, {% endif %}
                     {% endfor %}
-                    {% if voca.voca_meanings|length > 3 %}...{% endif %}
+                    {% if voca.meanings|length > 3 %}...{% endif %}
                 {% else %}
                     <span class="text-muted">-</span>
                 {% endif %}
@@ -59,11 +51,8 @@
             <td>{{ voca.verb_forms or '-' }}</td>
             <td>
                 <button class="btn btn-sm btn-primary edit-btn" data-id="{{ voca.id }}" data-bs-toggle="modal" data-bs-target="#editVocaModal">수정</button>
-                {% if voca.is_active %}
-                    <button class="btn btn-sm btn-warning hide-btn" data-id="{{ voca.id }}">숨김</button>
-                {% else %}
-                    <button class="btn btn-sm btn-success show-btn" data-id="{{ voca.id }}">보이기</button>
-                {% endif %}
+                {# <button class="btn btn-sm btn-warning hide-btn" data-id="{{ voca.id }}">숨김</button> #}
+                {# <button class="btn btn-sm btn-success show-btn" data-id="{{ voca.id }}">보이기</button> #}
             </td>
         </tr>
         <tr class="detail-row" id="detail-{{ voca.id }}" style="display: none;">

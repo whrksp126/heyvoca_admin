@@ -160,6 +160,13 @@
                         북스토어 삭제
                     </button>
                     {% endif %}
+                    {% if voca_book.book_type == 'admin' %}
+                    <button class="btn btn-info btn-sm text-white strong-tag-btn"
+                            data-voca-book-id="{{ voca_book.id }}"
+                            data-book-name="{{ voca_book.book_nm }}">
+                        Strong 태그
+                    </button>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -415,87 +422,233 @@
 </div>
 
 <!-- 단어장 추가 모달 -->
-<div class="modal fade" id="addVocaBookModal" tabindex="-1" aria-labelledby="addVocaBookModalLabel" aria-hidden="true">
+<style>
+.badge-ai-tab { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; font-size: 0.7rem; padding: 2px 7px; border-radius: 20px; vertical-align: middle; }
+.ai-meaning-badge { background: #e0e7ff; color: #3730a3; border-radius: 6px; padding: 2px 8px; font-size: 0.82rem; display: inline-block; margin: 1px; }
+.ai-example-text { font-size: 0.85rem; color: #555; }
+.ai-word-step { background: #6366f1; color: #fff; border-radius: 50%; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.78rem; font-weight: bold; margin-right: 6px; }
+</style>
+
+<!-- 단어 수정 모달 (AI 탭용) -->
+<div class="modal fade" id="aiWordEditModal" tabindex="-1" style="z-index:1060;">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
+                <h5 class="modal-title" id="aiWordEditModalTitle">단어 수정</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">단어</label>
+                    <input type="text" class="form-control" id="aiEditWord" placeholder="단어를 입력하세요">
+                </div>
+                <label class="form-label fw-semibold">뜻</label>
+                <div id="aiEditMeanings" class="mb-2"></div>
+                <button class="btn btn-outline-secondary btn-sm mb-3" onclick="aiAddMeaning()">+ 뜻 추가</button>
+                <label class="form-label fw-semibold">예문</label>
+                <div id="aiEditExamples" class="mb-2"></div>
+                <button class="btn btn-outline-secondary btn-sm" onclick="aiAddExample()">+ 예문 추가</button>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">취소</button>
+                <button type="button" class="btn btn-primary" onclick="aiSaveWordEdit()">저장</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="addVocaBookModal" tabindex="-1" aria-labelledby="addVocaBookModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header pb-0 border-0">
                 <h5 class="modal-title" id="addVocaBookModalLabel">새 단어장 추가</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body">
-                <form id="addVocaBookForm" enctype="multipart/form-data">
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="vocaBookName" class="form-label">단어장 이름 *</label>
-                            <input type="text" class="form-control" id="vocaBookName" name="book_nm" required placeholder="예: 토익 필수 어휘 1000">
+            <div class="modal-body pt-0">
+                <!-- 탭 네비게이션 -->
+                <ul class="nav nav-tabs mb-3" id="addBookTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="tab-manual-btn" data-bs-toggle="tab" data-bs-target="#tab-manual" type="button" role="tab">
+                            직접 입력
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tab-ai-btn" data-bs-toggle="tab" data-bs-target="#tab-ai" type="button" role="tab">
+                            ✨ AI 생성 <span class="badge-ai-tab ms-1">NEW</span>
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content">
+                    <!-- ── 탭 1: 직접 입력 ── -->
+                    <div class="tab-pane fade show active" id="tab-manual" role="tabpanel">
+                        <form id="addVocaBookForm" enctype="multipart/form-data">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="vocaBookName" class="form-label">단어장 이름 *</label>
+                                    <input type="text" class="form-control" id="vocaBookName" name="book_nm" required placeholder="예: 토익 필수 어휘 1000">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="vocaBookLanguage" class="form-label">언어 *</label>
+                                    <select class="form-select" id="vocaBookLanguage" name="language" required>
+                                        <option value="">선택하세요</option>
+                                        <option value="영어">영어</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="vocaBookSource" class="form-label">소스(출처) *</label>
+                                    <input type="text" class="form-control" id="vocaBookSource" name="source" required placeholder="예: EBS, 해커스, 직접 제작">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="vocaBookCategory" class="form-label">카테고리</label>
+                                    <select class="form-select" id="vocaBookCategory" name="category">
+                                        <option value="">선택하세요</option>
+                                        <option value="수능">수능</option>
+                                        <option value="토익">토익</option>
+                                        <option value="토플">토플</option>
+                                        <option value="일상">일상</option>
+                                        <option value="비즈니스">비즈니스</option>
+                                        <option value="기타">기타</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="vocaBookUsername" class="form-label">작성자</label>
+                                <input type="text" class="form-control" id="vocaBookUsername" name="username" placeholder="예: 관리자">
+                            </div>
+                            <hr class="my-4">
+                            <div class="mb-3">
+                                <label for="excelFile" class="form-label">엑셀 파일 업로드 *</label>
+                                <input type="file" class="form-control" id="excelFile" name="excel_file" accept=".xlsx,.xls" required>
+                                <div class="form-text">
+                                    <strong>엑셀 형식:</strong> 단어 | 뜻(콤마로 구분) | 예문1 | 예문뜻1 | 예문2 | 예문뜻2 | ...
+                                    <br>
+                                    <small class="text-muted">
+                                        • 첫 번째 열: 단어<br>
+                                        • 두 번째 열: 뜻 (여러 개일 경우 콤마로 구분, 예: "사과, 과일의 일종")<br>
+                                        • 세 번째 열 이후: 예문과 예문 뜻이 쌍으로 반복
+                                    </small>
+                                </div>
+                            </div>
+                            <div id="filePreview" class="mb-3" style="display: none;">
+                                <label class="form-label">파일 미리보기</label>
+                                <div class="table-responsive" style="max-height: 200px; overflow-y: auto;">
+                                    <table class="table table-sm table-bordered" id="previewTable">
+                                        <thead class="table-light"><tr id="previewHeader"></tr></thead>
+                                        <tbody id="previewBody"></tbody>
+                                    </table>
+                                </div>
+                                <small class="text-muted">처음 5개 행만 미리보기로 표시됩니다.</small>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- ── 탭 2: AI 생성 ── -->
+                    <div class="tab-pane fade" id="tab-ai" role="tabpanel">
+                        <!-- STEP 1: 조건 입력 -->
+                        <div id="aiStep1">
+                            <div class="mb-3 d-flex align-items-center gap-2">
+                                <span class="ai-word-step">1</span>
+                                <span class="fw-semibold">단어장 조건 설정</span>
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">단어장 이름 <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="aiBookNm" placeholder="예: 여행 영어 필수 단어">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label fw-semibold">단어 개수 <span class="text-danger">*</span></label>
+                                    <div class="input-group">
+                                        <input type="number" class="form-control" id="aiWordCount" value="10" min="1" max="50">
+                                        <span class="input-group-text">개</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label fw-semibold">언어</label>
+                                    <select class="form-select" id="aiLanguage">
+                                        <option value="영어">영어</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">카테고리</label>
+                                    <select class="form-select" id="aiCategory">
+                                        <option value="">선택 안 함</option>
+                                        <option value="수능">수능</option>
+                                        <option value="토익">토익</option>
+                                        <option value="토플">토플</option>
+                                        <option value="여행">여행</option>
+                                        <option value="비즈니스">비즈니스</option>
+                                        <option value="일상생활">일상생활</option>
+                                        <option value="음식">음식</option>
+                                        <option value="의료">의료</option>
+                                        <option value="교육">교육</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">상황 / 주제</label>
+                                    <input type="text" class="form-control" id="aiSituation" placeholder="예: 공항, 호텔 체크인">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">소스(출처)</label>
+                                    <input type="text" class="form-control" id="aiSource" value="AI 생성">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">작성자</label>
+                                    <input type="text" class="form-control" id="aiUsername" placeholder="예: 관리자">
+                                </div>
+                            </div>
+                            <div class="mt-3 d-flex justify-content-end">
+                                <button class="btn btn-primary px-4" id="aiGenerateBtn" onclick="aiGenerateWords()">
+                                    ✨ AI로 단어 생성하기
+                                </button>
+                            </div>
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="vocaBookLanguage" class="form-label">언어 *</label>
-                            <select class="form-select" id="vocaBookLanguage" name="language" required>
-                                <option value="">선택하세요</option>
-                                <option value="영어">영어</option>
-                            </select>
+
+                        <!-- STEP 2: 미리보기 (숨김) -->
+                        <div id="aiStep2" style="display:none;">
+                            <div class="d-flex align-items-center justify-content-between mb-3">
+                                <div>
+                                    <span class="ai-word-step">2</span>
+                                    <span class="fw-semibold">생성 결과 확인 및 수정</span>
+                                    <span class="text-muted ms-2 small" id="aiWordCountBadge"></span>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-outline-primary btn-sm" onclick="aiOpenAddWordModal()">+ 단어 추가</button>
+                                    <button class="btn btn-outline-secondary btn-sm" onclick="aiRegenerate()">🔄 다시 생성</button>
+                                </div>
+                            </div>
+                            <div class="table-responsive" style="max-height: 340px; overflow-y: auto;">
+                                <table class="table table-hover align-middle table-sm">
+                                    <thead class="table-light sticky-top">
+                                        <tr>
+                                            <th style="width:32px">#</th>
+                                            <th>단어</th>
+                                            <th>뜻</th>
+                                            <th>예문</th>
+                                            <th style="width:80px"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="aiWordTableBody"></tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="vocaBookSource" class="form-label">소스(출처) *</label>
-                            <input type="text" class="form-control" id="vocaBookSource" name="source" required placeholder="예: EBS, 해커스, 직접 제작">
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="vocaBookCategory" class="form-label">카테고리</label>
-                            <select class="form-select" id="vocaBookCategory" name="category">
-                                <option value="">선택하세요</option>
-                                <option value="수능">수능</option>
-                                <option value="토익">토익</option>
-                                <option value="토플">토플</option>
-                                <option value="일상">일상</option>
-                                <option value="비즈니스">비즈니스</option>
-                                <option value="기타">기타</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label for="vocaBookUsername" class="form-label">작성자</label>
-                        <input type="text" class="form-control" id="vocaBookUsername" name="username" placeholder="예: 관리자">
-                    </div>
-                    
-                    <hr class="my-4">
-                    
-                    <div class="mb-3">
-                        <label for="excelFile" class="form-label">엑셀 파일 업로드 *</label>
-                        <input type="file" class="form-control" id="excelFile" name="excel_file" accept=".xlsx,.xls" required>
-                        <div class="form-text">
-                            <strong>엑셀 형식:</strong> 단어 | 뜻(콤마로 구분) | 예문1 | 예문뜻1 | 예문2 | 예문뜻2 | ...
-                            <br>
-                            <small class="text-muted">
-                                • 첫 번째 열: 단어<br>
-                                • 두 번째 열: 뜻 (여러 개일 경우 콤마로 구분, 예: "사과, 과일의 일종")<br>
-                                • 세 번째 열 이후: 예문과 예문 뜻이 쌍으로 반복
-                            </small>
-                        </div>
-                    </div>
-                    
-                    <!-- 파일 미리보기 영역 -->
-                    <div id="filePreview" class="mb-3" style="display: none;">
-                        <label class="form-label">파일 미리보기</label>
-                        <div class="table-responsive" style="max-height: 200px; overflow-y: auto;">
-                            <table class="table table-sm table-bordered" id="previewTable">
-                                <thead class="table-light">
-                                    <tr id="previewHeader"></tr>
-                                </thead>
-                                <tbody id="previewBody"></tbody>
-                            </table>
-                        </div>
-                        <small class="text-muted">처음 5개 행만 미리보기로 표시됩니다.</small>
-                    </div>
-                </form>
+                </div>
             </div>
+
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                <!-- 직접 입력 탭 버튼 -->
                 <button type="submit" class="btn btn-success" form="addVocaBookForm" id="submitVocaBookBtn">
                     <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true" id="submitSpinner"></span>
                     단어장 생성
+                </button>
+                <!-- AI 탭 버튼 (숨김) -->
+                <button type="button" class="btn btn-success d-none" id="aiSaveBookBtn" onclick="aiSaveBook()">
+                    <span class="spinner-border spinner-border-sm d-none" role="status" id="aiSaveSpinner"></span>
+                    💾 단어장 저장
                 </button>
             </div>
         </div>
@@ -808,7 +961,242 @@ document.getElementById('addVocaBookForm').addEventListener('submit', async func
 document.getElementById('addVocaBookModal').addEventListener('hidden.bs.modal', function() {
     document.getElementById('addVocaBookForm').reset();
     document.getElementById('filePreview').style.display = 'none';
+    aiResetAll();
 });
+
+// 탭 전환 시 하단 버튼 토글
+document.getElementById('tab-manual-btn').addEventListener('shown.bs.tab', function() {
+    document.getElementById('submitVocaBookBtn').classList.remove('d-none');
+    document.getElementById('aiSaveBookBtn').classList.add('d-none');
+});
+document.getElementById('tab-ai-btn').addEventListener('shown.bs.tab', function() {
+    document.getElementById('submitVocaBookBtn').classList.add('d-none');
+    document.getElementById('aiSaveBookBtn').classList.remove('d-none');
+});
+
+// ── AI 탭 로직 ──
+let aiGeneratedWords = [];
+let aiEditingIndex = -1;
+let aiWordEditModal;
+
+document.addEventListener('DOMContentLoaded', () => {
+    aiWordEditModal = new bootstrap.Modal(document.getElementById('aiWordEditModal'));
+});
+
+async function aiGenerateWords() {
+    const bookNm = document.getElementById('aiBookNm').value.trim();
+    if (!bookNm) { alert('단어장 이름을 입력해주세요.'); return; }
+
+    const btn = document.getElementById('aiGenerateBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>생성 중...';
+
+    try {
+        const response = await fetch('/bookstore/api/ai/generate_words', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                book_nm: bookNm,
+                word_count: document.getElementById('aiWordCount').value,
+                category: document.getElementById('aiCategory').value,
+                situation: document.getElementById('aiSituation').value
+            })
+        });
+        const result = await response.json();
+        if (!result.success) { alert('오류: ' + result.error); return; }
+
+        aiGeneratedWords = result.words;
+        aiRenderTable();
+        document.getElementById('aiStep2').style.display = 'block';
+        document.getElementById('aiStep2').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        // 저장 버튼 활성화
+        document.getElementById('aiSaveBookBtn').disabled = false;
+    } catch (err) {
+        alert('AI 생성 중 오류가 발생했습니다.');
+        console.error(err);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '✨ AI로 단어 생성하기';
+    }
+}
+
+function aiRegenerate() {
+    document.getElementById('aiStep2').style.display = 'none';
+    aiGeneratedWords = [];
+    aiGenerateWords();
+}
+
+function aiRenderTable() {
+    const tbody = document.getElementById('aiWordTableBody');
+    tbody.innerHTML = aiGeneratedWords.map((w, i) => `
+        <tr>
+            <td class="text-muted small">${i + 1}</td>
+            <td><strong>${w.word}</strong></td>
+            <td>${(w.meanings || []).map(m => `<span class="ai-meaning-badge">${m}</span>`).join('')}</td>
+            <td>${(w.examples || []).map(e => `
+                <div class="ai-example-text">${e.en || ''}</div>
+                <div class="ai-example-text text-muted">${e.ko || ''}</div>
+            `).join('')}</td>
+            <td>
+                <div class="d-flex gap-1">
+                    <button class="btn btn-outline-primary btn-sm py-0" onclick="aiOpenEditModal(${i})">✏️</button>
+                    <button class="btn btn-outline-danger btn-sm py-0" onclick="aiDeleteWord(${i})">🗑️</button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+    document.getElementById('aiWordCountBadge').textContent = `${aiGeneratedWords.length}개 단어`;
+}
+
+function aiDeleteWord(i) {
+    aiGeneratedWords.splice(i, 1);
+    aiRenderTable();
+}
+
+function aiOpenEditModal(i) {
+    aiEditingIndex = i;
+    const w = aiGeneratedWords[i];
+    document.getElementById('aiWordEditModalTitle').textContent = '단어 수정';
+    document.getElementById('aiEditWord').value = w.word;
+    document.getElementById('aiEditWord').readOnly = false;
+    aiRenderEditMeanings(w.meanings || []);
+    aiRenderEditExamples(w.examples || []);
+    aiWordEditModal.show();
+}
+
+function aiOpenAddWordModal() {
+    aiEditingIndex = -1;
+    document.getElementById('aiWordEditModalTitle').textContent = '단어 추가';
+    document.getElementById('aiEditWord').value = '';
+    document.getElementById('aiEditWord').readOnly = false;
+    aiRenderEditMeanings(['']);
+    aiRenderEditExamples([{ en: '', ko: '' }]);
+    aiWordEditModal.show();
+}
+
+function aiRenderEditMeanings(meanings) {
+    document.getElementById('aiEditMeanings').innerHTML = meanings.map((m, mi) => `
+        <div class="d-flex align-items-center gap-2 mb-2">
+            <input type="text" class="form-control form-control-sm" value="${m}" id="aiMeaning-${mi}" placeholder="한국어 뜻">
+            <button class="btn btn-outline-danger btn-sm" onclick="aiRemoveMeaning(${mi})">✕</button>
+        </div>`).join('');
+}
+
+function aiRenderEditExamples(examples) {
+    document.getElementById('aiEditExamples').innerHTML = examples.map((e, ei) => `
+        <div class="border rounded p-2 mb-2 position-relative" id="aiExample-${ei}">
+            <button class="btn btn-outline-danger btn-sm position-absolute top-0 end-0 m-1 py-0" onclick="aiRemoveExample(${ei})">✕</button>
+            <div class="mb-1">
+                <label class="form-label small mb-1 fw-semibold">영문</label>
+                <input type="text" class="form-control form-control-sm" value="${e.en || ''}" id="aiExEn-${ei}" placeholder="English sentence">
+            </div>
+            <div>
+                <label class="form-label small mb-1 fw-semibold">한국어</label>
+                <input type="text" class="form-control form-control-sm" value="${e.ko || ''}" id="aiExKo-${ei}" placeholder="한국어 해석">
+            </div>
+        </div>`).join('');
+}
+
+function aiAddMeaning() {
+    aiRenderEditMeanings([...aiCollectMeanings(), '']);
+}
+
+function aiRemoveMeaning(mi) {
+    const arr = aiCollectMeanings();
+    arr.splice(mi, 1);
+    aiRenderEditMeanings(arr);
+}
+
+function aiAddExample() {
+    aiRenderEditExamples([...aiCollectExamples(), { en: '', ko: '' }]);
+}
+
+function aiRemoveExample(ei) {
+    const arr = aiCollectExamples();
+    arr.splice(ei, 1);
+    aiRenderEditExamples(arr);
+}
+
+function aiCollectMeanings() {
+    return [...document.querySelectorAll('#aiEditMeanings input')].map(el => el.value);
+}
+
+function aiCollectExamples() {
+    return [...document.querySelectorAll('#aiEditExamples [id^="aiExample-"]')].map((el, ei) => ({
+        en: document.getElementById(`aiExEn-${ei}`)?.value || '',
+        ko: document.getElementById(`aiExKo-${ei}`)?.value || ''
+    }));
+}
+
+function aiSaveWordEdit() {
+    const word = document.getElementById('aiEditWord').value.trim();
+    if (!word) { alert('단어를 입력해주세요.'); return; }
+    const meanings = aiCollectMeanings().filter(m => m.trim());
+    const examples = aiCollectExamples().filter(e => e.en || e.ko);
+
+    if (aiEditingIndex === -1) {
+        aiGeneratedWords.push({ word, meanings, examples });
+    } else {
+        Object.assign(aiGeneratedWords[aiEditingIndex], { word, meanings, examples });
+    }
+    aiWordEditModal.hide();
+    aiRenderTable();
+}
+
+async function aiSaveBook() {
+    if (!aiGeneratedWords.length) { alert('저장할 단어가 없습니다.'); return; }
+    const bookNm = document.getElementById('aiBookNm').value.trim();
+    if (!bookNm) { alert('단어장 이름을 입력해주세요.'); return; }
+
+    const btn = document.getElementById('aiSaveBookBtn');
+    const spinner = document.getElementById('aiSaveSpinner');
+    btn.disabled = true;
+    spinner.classList.remove('d-none');
+
+    try {
+        const response = await fetch('/bookstore/api/admin_voca_book/from_ai', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                book_nm: bookNm,
+                language: document.getElementById('aiLanguage').value,
+                source: document.getElementById('aiSource').value || 'AI 생성',
+                category: document.getElementById('aiCategory').value || null,
+                username: document.getElementById('aiUsername').value || null,
+                words: aiGeneratedWords
+            })
+        });
+        const result = await response.json();
+        if (result.success) {
+            alert(result.message);
+            location.reload();
+        } else {
+            alert('오류: ' + result.error);
+        }
+    } catch (err) {
+        alert('저장 중 오류가 발생했습니다.');
+        console.error(err);
+    } finally {
+        btn.disabled = false;
+        spinner.classList.add('d-none');
+    }
+}
+
+function aiResetAll() {
+    aiGeneratedWords = [];
+    aiEditingIndex = -1;
+    document.getElementById('aiBookNm').value = '';
+    document.getElementById('aiWordCount').value = 10;
+    document.getElementById('aiCategory').value = '';
+    document.getElementById('aiSituation').value = '';
+    document.getElementById('aiSource').value = 'AI 생성';
+    document.getElementById('aiUsername').value = '';
+    document.getElementById('aiStep2').style.display = 'none';
+    document.getElementById('aiWordTableBody').innerHTML = '';
+    // 탭 초기화
+    const manualTab = bootstrap.Tab.getOrCreateInstance(document.getElementById('tab-manual-btn'));
+    manualTab.show();
+}
 
 // 단어 목록 모달 관련 JavaScript
 let currentVocaBookId = null;
@@ -1133,6 +1521,194 @@ document.getElementById('newWordInput').addEventListener('keypress', function(e)
         document.getElementById('addWordBtn').click();
     }
 });
+</script>
+
+<!-- ──────────────────────────────────────────
+     Strong 태그 추가 모달
+────────────────────────────────────────── -->
+<div class="modal fade" id="strongTagModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="strongTagModalTitle">Strong 태그 추가</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- 로딩 -->
+                <div id="strongTagLoading" class="text-center py-5">
+                    <div class="spinner-border text-primary mb-2" role="status"></div>
+                    <p class="text-muted">예문 분석 중... (spacy / AI 처리)</p>
+                </div>
+                <!-- 결과 -->
+                <div id="strongTagResults" style="display:none;">
+                    <div class="alert alert-info small mb-3">
+                        <strong>안내:</strong> 예문에 <code>&lt;strong class="target-word"&gt;단어&lt;/strong&gt;</code> 태그가 자동 삽입됩니다.
+                        잘못된 부분은 textarea에서 직접 수정한 뒤 저장하세요.
+                    </div>
+                    <div style="max-height:500px; overflow-y:auto;">
+                        <table class="table table-sm table-bordered align-middle">
+                            <thead class="table-light" style="position:sticky;top:0;z-index:1;">
+                                <tr>
+                                    <th style="width:90px;">단어</th>
+                                    <th style="width:110px;">뜻</th>
+                                    <th style="width:28px;">#</th>
+                                    <th>영어 예문</th>
+                                    <th>한국어 예문</th>
+                                </tr>
+                            </thead>
+                            <tbody id="strongTagTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+                <button type="button" class="btn btn-success d-none" id="strongTagSaveBtn" onclick="saveStrongTags()">
+                    <span class="spinner-border spinner-border-sm d-none me-1" id="strongTagSaveSpinner"></span>
+                    저장
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let _strongTagBookId = null;
+let _strongTagData   = [];
+
+// 버튼 클릭 → 모달 열기 + 처리 시작
+document.querySelectorAll('.strong-tag-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        _strongTagBookId = this.getAttribute('data-voca-book-id');
+        const bookName   = this.getAttribute('data-book-name');
+
+        document.getElementById('strongTagModalTitle').textContent = `Strong 태그 추가 — ${bookName}`;
+        document.getElementById('strongTagLoading').style.display  = 'block';
+        document.getElementById('strongTagLoading').innerHTML =
+            '<div class="spinner-border text-primary mb-2" role="status"></div><p class="text-muted">예문 분석 중... (spacy / AI 처리)</p>';
+        document.getElementById('strongTagResults').style.display  = 'none';
+        document.getElementById('strongTagSaveBtn').classList.add('d-none');
+
+        const modal = new bootstrap.Modal(document.getElementById('strongTagModal'));
+        modal.show();
+
+        _fetchStrongTags(_strongTagBookId);
+    });
+});
+
+async function _fetchStrongTags(bookId) {
+    try {
+        const res    = await fetch(`/bookstore/api/admin_voca_book/${bookId}/tag_examples`, { method: 'POST' });
+        const result = await res.json();
+        if (!result.success) {
+            document.getElementById('strongTagLoading').innerHTML =
+                `<div class="alert alert-danger">오류: ${result.error || '알 수 없는 오류'}</div>`;
+            return;
+        }
+        _strongTagData = result.results;
+        _renderStrongTagTable(_strongTagData);
+        document.getElementById('strongTagLoading').style.display  = 'none';
+        document.getElementById('strongTagResults').style.display  = 'block';
+        document.getElementById('strongTagSaveBtn').classList.remove('d-none');
+    } catch (err) {
+        document.getElementById('strongTagLoading').innerHTML =
+            `<div class="alert alert-danger">요청 실패: ${err.message}</div>`;
+    }
+}
+
+function _escapeHtml(str) {
+    return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function _renderStrongTagTable(data) {
+    const tbody = document.getElementById('strongTagTableBody');
+    let rows = '';
+
+    data.forEach((item, itemIdx) => {
+        const wordHtml     = _escapeHtml(item.word);
+        const meaningsHtml = _escapeHtml((item.meanings || []).join(', '));
+        const exCount      = item.examples.length;
+
+        if (exCount === 0) {
+            rows += `<tr>
+                <td><strong>${wordHtml}</strong></td>
+                <td class="small text-muted">${meaningsHtml}</td>
+                <td colspan="3" class="text-center text-muted small">예문 없음</td>
+            </tr>`;
+            return;
+        }
+
+        item.examples.forEach((ex, exIdx) => {
+            rows += `<tr>
+                ${exIdx === 0 ? `<td rowspan="${exCount}"><strong>${wordHtml}</strong></td>` : ''}
+                ${exIdx === 0 ? `<td rowspan="${exCount}" class="small text-muted">${meaningsHtml}</td>` : ''}
+                <td class="text-muted small text-center">${exIdx + 1}</td>
+                <td>
+                    <textarea class="form-control form-control-sm strong-tag-en"
+                              data-item="${itemIdx}" data-ex="${exIdx}"
+                              rows="2" style="font-size:0.78rem;font-family:monospace;"></textarea>
+                </td>
+                <td>
+                    <textarea class="form-control form-control-sm strong-tag-ko"
+                              data-item="${itemIdx}" data-ex="${exIdx}"
+                              rows="2" style="font-size:0.78rem;font-family:monospace;"></textarea>
+                </td>
+            </tr>`;
+        });
+    });
+
+    tbody.innerHTML = rows;
+
+    // textarea 값은 innerHTML 밖에서 직접 set (HTML 태그 유지)
+    document.querySelectorAll('.strong-tag-en').forEach(el => {
+        const i = +el.dataset.item, e = +el.dataset.ex;
+        el.value = data[i].examples[e].en || '';
+    });
+    document.querySelectorAll('.strong-tag-ko').forEach(el => {
+        const i = +el.dataset.item, e = +el.dataset.ex;
+        el.value = data[i].examples[e].ko || '';
+    });
+}
+
+async function saveStrongTags() {
+    // textarea 현재 값 수집
+    document.querySelectorAll('.strong-tag-en').forEach(el => {
+        _strongTagData[+el.dataset.item].examples[+el.dataset.ex].en = el.value;
+    });
+    document.querySelectorAll('.strong-tag-ko').forEach(el => {
+        _strongTagData[+el.dataset.item].examples[+el.dataset.ex].ko = el.value;
+    });
+
+    const items = _strongTagData.map(item => ({
+        map_id:   item.map_id,
+        examples: item.examples.map(ex => ({ en: ex.en, ko: ex.ko }))
+    }));
+
+    const saveBtn = document.getElementById('strongTagSaveBtn');
+    const spinner = document.getElementById('strongTagSaveSpinner');
+    saveBtn.disabled = true;
+    spinner.classList.remove('d-none');
+
+    try {
+        const res    = await fetch(`/bookstore/api/admin_voca_book/${_strongTagBookId}/save_tagged_examples`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ items })
+        });
+        const result = await res.json();
+        if (result.success) {
+            alert('저장되었습니다.');
+            bootstrap.Modal.getInstance(document.getElementById('strongTagModal')).hide();
+        } else {
+            alert('저장 실패: ' + (result.error || '오류'));
+        }
+    } catch (err) {
+        alert('저장 중 오류: ' + err.message);
+    } finally {
+        saveBtn.disabled = false;
+        spinner.classList.add('d-none');
+    }
+}
 </script>
 
 <!-- SheetJS 라이브러리 (엑셀 미리보기용) -->
