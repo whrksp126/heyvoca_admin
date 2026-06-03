@@ -15,7 +15,11 @@ def api(method, path, **kwargs):
     url = current_app.config['BACKEND_URL'] + '/admin' + path
     headers = {'X-Admin-API-Key': current_app.config['ADMIN_API_KEY']}
     resp = getattr(requests, method)(url, headers=headers, **kwargs)
-    return resp.json(), resp.status_code
+    try:
+        return resp.json(), resp.status_code
+    except Exception:
+        current_app.logger.error(f'[api] non-JSON response from {method.upper()} {url}: {resp.status_code} {resp.text[:200]}')
+        return {'code': resp.status_code, 'message': f'백엔드 오류 ({resp.status_code})'}, resp.status_code
 
 
 # ──────────────────────────────────────────
@@ -400,4 +404,15 @@ def save_tagged_admin_voca_book_examples(admin_voca_book_id):
     resp, status = api('patch', f'/admin_voca_book/{admin_voca_book_id}/save_tagged_examples', json=request.json)
     if resp.get('code') == 200:
         return jsonify({'success': True})
+    return jsonify({'success': False, 'error': resp.get('message', '오류 발생')}), status
+
+
+### 임시 ###
+@bp.route('/api/admin/tag_examples_from_excel', methods=['GET'])
+@login_required
+def tag_examples_from_excel():
+    print("comming!!!")
+    resp, status = api('post', '/admin_voca_book/tag_examples_from_excel')
+    if resp.get('code') == 200:
+        return jsonify({'success': True, 'data': resp.get('data')})
     return jsonify({'success': False, 'error': resp.get('message', '오류 발생')}), status

@@ -1537,13 +1537,12 @@ document.getElementById('newWordInput').addEventListener('keypress', function(e)
                 <!-- 로딩 -->
                 <div id="strongTagLoading" class="text-center py-5">
                     <div class="spinner-border text-primary mb-2" role="status"></div>
-                    <p class="text-muted">예문 분석 중... (spacy / AI 처리)</p>
+                    <p class="text-muted">예문 불러오는 중...</p>
                 </div>
                 <!-- 결과 -->
                 <div id="strongTagResults" style="display:none;">
                     <div class="alert alert-info small mb-3">
-                        <strong>안내:</strong> 예문에 <code>&lt;strong class="target-word"&gt;단어&lt;/strong&gt;</code> 태그가 자동 삽입됩니다.
-                        잘못된 부분은 textarea에서 직접 수정한 뒤 저장하세요.
+                        <strong>안내:</strong> textarea에서 직접 수정하거나, <strong>Strong 자동 붙이기</strong> 버튼으로 <code>&lt;strong class="target-word"&gt;</code> 태그를 자동 삽입할 수 있습니다.
                     </div>
                     <div style="max-height:500px; overflow-y:auto;">
                         <table class="table table-sm table-bordered align-middle">
@@ -1563,6 +1562,11 @@ document.getElementById('newWordInput').addEventListener('keypress', function(e)
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+                <button type="button" class="btn btn-secondary d-none" id="strongTagTempBtn" onclick="tempTagFromExcel()">임시</button>
+                <button type="button" class="btn btn-warning d-none" id="strongTagAutoBtn" onclick="autoTagExamples()">
+                    <span class="spinner-border spinner-border-sm d-none me-1" id="strongTagAutoSpinner"></span>
+                    Strong 자동 붙이기
+                </button>
                 <button type="button" class="btn btn-success d-none" id="strongTagSaveBtn" onclick="saveStrongTags()">
                     <span class="spinner-border spinner-border-sm d-none me-1" id="strongTagSaveSpinner"></span>
                     저장
@@ -1576,7 +1580,7 @@ document.getElementById('newWordInput').addEventListener('keypress', function(e)
 let _strongTagBookId = null;
 let _strongTagData   = [];
 
-// 버튼 클릭 → 모달 열기 + 처리 시작
+// 버튼 클릭 → 모달 열기 + 기존 예문 로드
 document.querySelectorAll('.strong-tag-btn').forEach(btn => {
     btn.addEventListener('click', function() {
         _strongTagBookId = this.getAttribute('data-voca-book-id');
@@ -1585,34 +1589,99 @@ document.querySelectorAll('.strong-tag-btn').forEach(btn => {
         document.getElementById('strongTagModalTitle').textContent = `Strong 태그 추가 — ${bookName}`;
         document.getElementById('strongTagLoading').style.display  = 'block';
         document.getElementById('strongTagLoading').innerHTML =
-            '<div class="spinner-border text-primary mb-2" role="status"></div><p class="text-muted">예문 분석 중... (spacy / AI 처리)</p>';
+            '<div class="spinner-border text-primary mb-2" role="status"></div><p class="text-muted">예문 불러오는 중...</p>';
         document.getElementById('strongTagResults').style.display  = 'none';
         document.getElementById('strongTagSaveBtn').classList.add('d-none');
+        document.getElementById('strongTagAutoBtn').classList.add('d-none');
+        document.getElementById('strongTagTempBtn').classList.add('d-none');
 
         const modal = new bootstrap.Modal(document.getElementById('strongTagModal'));
         modal.show();
 
-        _fetchStrongTags(_strongTagBookId);
+        _fetchWords(_strongTagBookId);
     });
 });
 
-async function _fetchStrongTags(bookId) {
+async function _fetchWords(bookId) {
     try {
-        const res    = await fetch(`/bookstore/api/admin_voca_book/${bookId}/tag_examples`, { method: 'POST' });
+        const res    = await fetch(`/bookstore/admin_voca_book/${bookId}/words?per_page=1000`);
         const result = await res.json();
         if (!result.success) {
             document.getElementById('strongTagLoading').innerHTML =
                 `<div class="alert alert-danger">오류: ${result.error || '알 수 없는 오류'}</div>`;
             return;
         }
-        _strongTagData = result.results;
+        _strongTagData = result.words;
         _renderStrongTagTable(_strongTagData);
         document.getElementById('strongTagLoading').style.display  = 'none';
         document.getElementById('strongTagResults').style.display  = 'block';
         document.getElementById('strongTagSaveBtn').classList.remove('d-none');
+        document.getElementById('strongTagAutoBtn').classList.remove('d-none');
+        document.getElementById('strongTagTempBtn').classList.remove('d-none');
     } catch (err) {
         document.getElementById('strongTagLoading').innerHTML =
             `<div class="alert alert-danger">요청 실패: ${err.message}</div>`;
+    }
+}
+
+async function tempTagFromExcel() {
+    const btn = document.getElementById('strongTagTempBtn');
+    btn.disabled = true;
+    btn.textContent = '처리중...';
+    try {
+        const res = await fetch('/bookstore/api/admin/tag_examples_from_excel');
+        const result = await res.json();
+        if (result.success) {
+            alert('완료: ' + JSON.stringify(result.data));
+        } else {
+            alert('오류: ' + (result.error || '알 수 없는 오류'));
+        }
+    } catch (err) {
+        alert('요청 실패: ' + err.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '임시';
+    }
+}
+
+async function autoTagExamples() {
+    const autoBtn    = document.getElementById('strongTagAutoBtn');
+    const autoSpinner = document.getElementById('strongTagAutoSpinner');
+    autoBtn.disabled = true;
+    autoSpinner.classList.remove('d-none');
+
+    try {
+        const res    = await fetch(`/bookstore/api/admin_voca_book/${_strongTagBookId}/tag_examples`, { method: 'POST' });
+        const result = await res.json();
+        if (!result.success) {
+            alert('오류: ' + (result.error || '알 수 없는 오류'));
+            return;
+        }
+        // map_id 기준으로 textarea 업데이트
+        const byMapId = {};
+        result.results.forEach(item => { byMapId[item.map_id] = item; });
+
+        document.querySelectorAll('.strong-tag-en').forEach(el => {
+            const i = +el.dataset.item;
+            const e = +el.dataset.ex;
+            const mapId = _strongTagData[i].map_id;
+            if (byMapId[mapId] && byMapId[mapId].examples[e]) {
+                el.value = byMapId[mapId].examples[e].en || el.value;
+            }
+        });
+        document.querySelectorAll('.strong-tag-ko').forEach(el => {
+            const i = +el.dataset.item;
+            const e = +el.dataset.ex;
+            const mapId = _strongTagData[i].map_id;
+            if (byMapId[mapId] && byMapId[mapId].examples[e]) {
+                el.value = byMapId[mapId].examples[e].ko || el.value;
+            }
+        });
+    } catch (err) {
+        alert('요청 실패: ' + err.message);
+    } finally {
+        autoBtn.disabled = false;
+        autoSpinner.classList.add('d-none');
     }
 }
 
