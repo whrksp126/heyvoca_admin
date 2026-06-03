@@ -1,0 +1,19 @@
+services:
+  admin:
+    container_name: heyvoca_admin_prod
+    image: heyvoca_admin:prod
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - ./.env
+    networks:
+      - heyvoca_prod_heyvoca_prod
+      - nginx_proxy
+    restart: always
+
+networks:
+  heyvoca_prod_heyvoca_prod:
+    external: true
+  nginx_proxy:
+    external: true

@@ -1,0 +1,19 @@
+FROM python:3.11-slim
+
+ENV TZ=Asia/Seoul \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends default-mysql-client tzdata && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+ENV FLASK_APP=run.py
+CMD ["gunicorn", "-w", "2", "-b", "0.0.0.0:5000", "run:app"]

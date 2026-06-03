@@ -1,4 +1,6 @@
 .env
+.env.dev
+.env.stg
 __pycache__/
 *.pyc
 *.pyo

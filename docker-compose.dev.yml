@@ -1,0 +1,25 @@
+services:
+  admin:
+    container_name: heyvoca_admin_dev
+    image: heyvoca_admin:dev
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: gunicorn --reload -w 2 -b 0.0.0.0:5000 run:app
+    env_file:
+      - ./.env.dev
+    volumes:
+      - ./app:/app/app
+      - ./application.py:/app/application.py
+      - ./run.py:/app/run.py
+      - ./config.py:/app/config.py
+    networks:
+      - heyvoca_dev_heyvoca_dev
+      - nginx_proxy
+    restart: always
+
+networks:
+  heyvoca_dev_heyvoca_dev:
+    external: true
+  nginx_proxy:
+    external: true
