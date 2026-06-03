@@ -1,0 +1,17 @@
+.git
+.gitignore
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+venv
+.venv
+env
+.env
+*.stackdump
+deploy.zip
+deploy.sh
+CLAUDE.md
+.dockerignore
+Dockerfile.local
+docker-compose.local.yml

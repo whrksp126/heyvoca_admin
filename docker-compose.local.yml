@@ -1,0 +1,31 @@
+services:
+  admin:
+    container_name: heyvoca_admin_local
+    build:
+      context: .
+      dockerfile: Dockerfile.local
+    ports:
+      - "5101:5000"
+    environment:
+      SECRET_KEY: local-dev-secret
+      DB_USER: voca
+      DB_PASSWORD: voca!@34
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_NAME: heyvoca
+      BACKEND_URL: http://nginx:5003
+      ADMIN_API_KEY: local-admin-api-key
+      OPENAI_API_KEY: ""
+      GEMINI_API_KEY: ""
+      ANTHROPIC_API_KEY: ""
+    volumes:
+      - ./app:/app/app
+      - ./application.py:/app/application.py
+      - ./run.py:/app/run.py
+      - ./config.py:/app/config.py
+    networks:
+      - heyvoca_service_heyvoca_local
+
+networks:
+  heyvoca_service_heyvoca_local:
+    external: true
