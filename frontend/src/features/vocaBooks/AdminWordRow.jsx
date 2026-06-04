@@ -6,6 +6,7 @@ import { ConfirmModal } from '@/components/ui/overlays';
 import { patchAdminWord, deleteAdminWord, getVocaDictionary } from '@/lib/endpoints';
 import { ApiError } from '@/lib/api';
 import { exOrigin, exMeaning, emphasisLevel } from './helpers';
+import EmphasisField from './EmphasisField';
 
 // 강조 상태 dot 색상 (디자인 토큰)
 const DOT = {
@@ -195,16 +196,8 @@ export default function AdminWordRow({ bookId, word, onUpdated, onDeleted, onAut
             return (
               <div key={i} className="flex items-center gap-1.5">
                 <span className={`w-2 h-2 rounded-full shrink-0 ${dot.cls}`} title={dot.title} aria-label={dot.title} />
-                <input
-                  type="text" placeholder="원어" value={ex.origin}
-                  onChange={(e) => updateExample(i, 'origin', e.target.value)}
-                  className="flex-1 bg-white border border-layout-gray-100 text-xs text-layout-black rounded-lg px-2 py-1 focus:outline-none focus:border-primary-main-400"
-                />
-                <input
-                  type="text" placeholder="의미" value={ex.meaning}
-                  onChange={(e) => updateExample(i, 'meaning', e.target.value)}
-                  className="flex-1 bg-white border border-layout-gray-100 text-xs text-layout-black rounded-lg px-2 py-1 focus:outline-none focus:border-primary-main-400"
-                />
+                <EmphasisField size="sm" value={ex.origin} onChange={(val) => updateExample(i, 'origin', val)} placeholder="원어" />
+                <EmphasisField size="sm" value={ex.meaning} onChange={(val) => updateExample(i, 'meaning', val)} placeholder="의미" />
                 <button onClick={() => removeExample(i)} className="text-layout-gray-300 hover:text-status-error-600 px-1" aria-label="예문 제거">×</button>
               </div>
             );

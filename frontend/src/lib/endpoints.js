@@ -67,6 +67,7 @@ export const patchVoca = (id, patch) => apiPatch(`/api/voca/${id}`, patch); // T
 export const hideVoca = (id) => apiPatch(`/api/voca/${id}/hide`, {});  // T28
 export const showVoca = (id) => apiPatch(`/api/voca/${id}/show`, {});  // T29
 export const autocompleteVoca = (q) => apiGet(`/api/voca/autocomplete${buildQuery({ q })}`); // T8(보조)
+export const tagVocaExamples = (id) => apiPost(`/api/voca/${id}/tag_examples`, {}); // 예문 강조 자동 태깅(미리보기)
 
 // ──────────────────────────────────────────────────────────
 // AI 단어 생성 (heyvoca_admin 내부 OpenAI) : T20

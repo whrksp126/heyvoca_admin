@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Drawer, ConfirmModal } from '@/components/ui/overlays';
 import { Button, Field, Input, Textarea, Spinner, ToggleSwitch, Tag } from '@/components/ui/primitives';
-import { getVoca, patchVoca, hideVoca, showVoca } from '@/lib/endpoints';
+import { getVoca, patchVoca, hideVoca, showVoca, tagVocaExamples } from '@/lib/endpoints';
 import { ApiError } from '@/lib/api';
+import EmphasisField from '../vocaBooks/EmphasisField';
 
 // 난이도 옵션 (백엔드 level 컬럼 — 숫자/문자 자유. 미지정 가능)
 const LEVEL_OPTIONS = ['', '1', '2', '3', '4', '5'];
@@ -32,6 +33,7 @@ export default function VocaDetailDrawer({
   const [active, setActive] = useState(initialActive);
   const [toggling, setToggling] = useState(false);
   const [confirmHide, setConfirmHide] = useState(false);
+  const [tagging, setTagging] = useState(false);
 
   const handleApiError = useCallback((e, fallback) => {
     if (e instanceof ApiError && e.status === 401) { onAuthError?.(); return; }
@@ -107,6 +109,33 @@ export default function VocaDetailDrawer({
       handleApiError(e, '저장에 실패했습니다.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  // ── 예문 강조 자동 태깅 (미리보기 → form 반영, 저장은 기존 handleSave) ──
+  const handleAutoTag = async () => {
+    const taggable = form.examples.filter((ex) => ex.id != null);
+    if (taggable.length === 0) {
+      toast.error('태깅할 예문이 없습니다. (저장된 예문만 자동 태깅됩니다)');
+      return;
+    }
+    setTagging(true);
+    try {
+      const res = await tagVocaExamples(vocaId);
+      const tagged = res?.data?.examples || [];
+      const byId = new Map(tagged.map((t) => [t.id, t]));
+      setForm((f) => ({
+        ...f,
+        examples: f.examples.map((ex) => {
+          const t = ex.id != null ? byId.get(ex.id) : null;
+          return t ? { ...ex, exam_en: t.exam_en || '', exam_ko: t.exam_ko || '' } : ex;
+        }),
+      }));
+      toast.success('예문 강조를 적용했습니다. 확인 후 [저장]을 눌러주세요.');
+    } catch (e) {
+      handleApiError(e, '예문 강조 태깅에 실패했습니다.');
+    } finally {
+      setTagging(false);
     }
   };
 
@@ -218,7 +247,10 @@ export default function VocaDetailDrawer({
           <section className="bg-white border border-layout-gray-100 rounded-xl p-4 space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-bold text-layout-black">예문 ({form.examples.length})</h4>
-              <Button variant="secondary" size="sm" onClick={addExample}>+ 예문 추가</Button>
+              <div className="flex items-center gap-2">
+                <Button variant="blue" size="sm" loading={tagging} onClick={handleAutoTag}>예문 강조 자동 태깅</Button>
+                <Button variant="secondary" size="sm" onClick={addExample}>+ 예문 추가</Button>
+              </div>
             </div>
             {form.examples.length === 0 ? (
               <p className="text-xs text-layout-gray-300 py-2">등록된 예문이 없습니다.</p>
@@ -231,10 +263,10 @@ export default function VocaDetailDrawer({
                       <Button variant="ghost" size="sm" onClick={() => removeExample(idx)} className="text-status-error-600">삭제</Button>
                     </div>
                     <Field label="원문 (exam_en)">
-                      <Input value={ex.exam_en} onChange={(e) => updateExample(idx, 'exam_en', e.target.value)} placeholder="영어 예문" />
+                      <EmphasisField value={ex.exam_en} onChange={(val) => updateExample(idx, 'exam_en', val)} placeholder="영어 예문" />
                     </Field>
                     <Field label="번역 (exam_ko)">
-                      <Input value={ex.exam_ko} onChange={(e) => updateExample(idx, 'exam_ko', e.target.value)} placeholder="한국어 번역" />
+                      <EmphasisField value={ex.exam_ko} onChange={(val) => updateExample(idx, 'exam_ko', val)} placeholder="한국어 번역" />
                     </Field>
                   </div>
                 ))}
