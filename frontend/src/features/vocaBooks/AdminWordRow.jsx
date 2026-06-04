@@ -6,15 +6,8 @@ import { ConfirmModal } from '@/components/ui/overlays';
 import { FloppyDisk, Trash, BookOpen } from '@phosphor-icons/react';
 import { patchAdminWord, deleteAdminWord, getVocaDictionary } from '@/lib/endpoints';
 import { ApiError } from '@/lib/api';
-import { exOrigin, exMeaning, emphasisLevel } from './helpers';
+import { exOrigin, exMeaning } from './helpers';
 import EmphasisField from './EmphasisField';
-
-// 강조 상태 dot 색상 (디자인 토큰)
-const DOT = {
-  green: { cls: 'bg-status-success-500', title: '원어·의미 모두 강조 처리됨' },
-  yellow: { cls: 'bg-secondary-yellow-500', title: '한쪽만 강조 처리됨' },
-  red: { cls: 'bg-status-error-500', title: '강조 처리 없음' },
-};
 
 export default function AdminWordRow({ bookId, word, onUpdated, onDeleted, onAuthError, toast }) {
   const [meanings, setMeanings] = useState(word.meanings || []);
@@ -190,17 +183,13 @@ export default function AdminWordRow({ bookId, word, onUpdated, onDeleted, onAut
         </div>
         <div className="space-y-1.5">
           {examples.length === 0 && <div className="text-[11px] text-layout-gray-300">예문이 없습니다.</div>}
-          {examples.map((ex, i) => {
-            const dot = DOT[emphasisLevel(ex.origin, ex.meaning)];
-            return (
-              <div key={i} className="flex items-center gap-1.5">
-                <span className={`w-2 h-2 rounded-full shrink-0 ${dot.cls}`} title={dot.title} aria-label={dot.title} />
-                <EmphasisField size="sm" value={ex.origin} onChange={(val) => updateExample(i, 'origin', val)} placeholder="원어" />
-                <EmphasisField size="sm" value={ex.meaning} onChange={(val) => updateExample(i, 'meaning', val)} placeholder="의미" />
-                <button onClick={() => removeExample(i)} className="text-layout-gray-300 hover:text-status-error-600 px-1" aria-label="예문 제거">×</button>
-              </div>
-            );
-          })}
+          {examples.map((ex, i) => (
+            <div key={i} className="flex items-center gap-1.5">
+              <EmphasisField size="sm" value={ex.origin} onChange={(val) => updateExample(i, 'origin', val)} placeholder="원어" />
+              <EmphasisField size="sm" value={ex.meaning} onChange={(val) => updateExample(i, 'meaning', val)} placeholder="의미" />
+              <button onClick={() => removeExample(i)} className="text-layout-gray-300 hover:text-status-error-600 px-1" aria-label="예문 제거">×</button>
+            </div>
+          ))}
         </div>
       </div>
 
