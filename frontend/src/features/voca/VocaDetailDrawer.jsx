@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Drawer, ConfirmModal } from '@/components/ui/overlays';
-import { Button, Field, Input, Textarea, Spinner, ToggleSwitch, Tag } from '@/components/ui/primitives';
-import { getVoca, patchVoca, hideVoca, showVoca } from '@/lib/endpoints';
+import { Drawer } from '@/components/ui/overlays';
+import { Button, Field, Input, Textarea, Spinner } from '@/components/ui/primitives';
+import { getVoca, patchVoca } from '@/lib/endpoints';
 import { ApiError } from '@/lib/api';
 import EmphasisField from '../vocaBooks/EmphasisField';
 
@@ -12,27 +12,22 @@ const LEVEL_OPTIONS = ['', '1', '2', '3', '4', '5'];
 const emptyForm = { word: '', pronunciation: '', verb_forms: '', level: '', meanings: [], examples: [] };
 
 /**
- * 단어 상세 조회(T26) + 수정(T27) + 노출/숨김(T28/T29) Drawer.
+ * 단어 상세 조회 + 수정 Drawer.
  *
  * props:
- *  - vocaId            : 열려있는 단어 id (null 이면 닫힘)
- *  - initialActive     : 목록에서 넘겨받은 현재 노출 상태 (낙관적 표시용)
- *  - onClose()         : 닫기
- *  - onSaved(id)       : 저장 성공 후 목록 갱신용 콜백
- *  - onActiveChange(id, active) : 노출 상태 변경 시 목록 동기화
- *  - onAuthError()     : 401 처리
- *  - toast             : useToast() 결과
+ *  - vocaId        : 열려있는 단어 id (null 이면 닫힘)
+ *  - onClose()     : 닫기
+ *  - onSaved(id)   : 저장 성공 후 목록 갱신용 콜백
+ *  - onAuthError() : 401 처리
+ *  - toast         : useToast() 결과
  */
 export default function VocaDetailDrawer({
-  vocaId, initialActive = true, onClose, onSaved, onActiveChange, onAuthError, toast,
+  vocaId, onClose, onSaved, onAuthError, toast,
 }) {
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
-  const [active, setActive] = useState(initialActive);
-  const [toggling, setToggling] = useState(false);
-  const [confirmHide, setConfirmHide] = useState(false);
 
   const handleApiError = useCallback((e, fallback) => {
     if (e instanceof ApiError && e.status === 401) { onAuthError?.(); return; }
@@ -45,7 +40,6 @@ export default function VocaDetailDrawer({
     let alive = true;
     setLoading(true);
     setLoadError(null);
-    setActive(initialActive);
     getVoca(vocaId)
       .then((res) => {
         if (!alive) return;
@@ -68,7 +62,7 @@ export default function VocaDetailDrawer({
       })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
-  }, [vocaId, initialActive, onAuthError]);
+  }, [vocaId, onAuthError]);
 
   const setField = (key, value) => setForm((f) => ({ ...f, [key]: value }));
 
@@ -119,27 +113,6 @@ export default function VocaDetailDrawer({
     }
   };
 
-  // ── 노출/숨김(T28/T29) ──
-  const applyToggle = async (next) => {
-    setToggling(true);
-    try {
-      if (next) await showVoca(vocaId);
-      else await hideVoca(vocaId);
-      setActive(next);
-      onActiveChange?.(vocaId, next);
-      toast.success(next ? '단어를 노출했습니다.' : '단어를 숨겼습니다.');
-    } catch (e) {
-      handleApiError(e, '노출 상태 변경에 실패했습니다.');
-    } finally {
-      setToggling(false);
-    }
-  };
-
-  const handleToggle = (next) => {
-    if (!next) { setConfirmHide(true); return; } // 숨김은 확인 다이얼로그
-    applyToggle(true);
-  };
-
   return (
     <Drawer
       open={vocaId != null}
@@ -153,20 +126,6 @@ export default function VocaDetailDrawer({
         <div className="text-sm text-status-error-600 py-8 text-center">{loadError}</div>
       ) : (
         <>
-          {/* 노출 상태 (T28/T29) */}
-          <section className="bg-white border border-layout-gray-100 rounded-xl p-4 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-layout-black">노출 상태</span>
-              <Tag tone={active ? 'green' : 'gray'}>{active ? '노출 중' : '숨김'}</Tag>
-            </div>
-            <ToggleSwitch
-              checked={active}
-              disabled={toggling}
-              onChange={handleToggle}
-              label={active ? '노출' : '숨김'}
-            />
-          </section>
-
           {/* 기본 정보 (T27) */}
           <section className="bg-white border border-layout-gray-100 rounded-xl p-4 space-y-4">
             <h4 className="text-sm font-bold text-layout-black">기본 정보</h4>
@@ -258,16 +217,6 @@ export default function VocaDetailDrawer({
           </div>
         </>
       )}
-
-      <ConfirmModal
-        open={confirmHide}
-        title="단어 숨김"
-        message={`"${form.word}" 단어를 숨길까요?\n앱 사용자에게 더 이상 노출되지 않습니다.`}
-        confirmText="숨김"
-        tone="danger"
-        onCancel={() => setConfirmHide(false)}
-        onConfirm={() => { setConfirmHide(false); applyToggle(false); }}
-      />
     </Drawer>
   );
 }
