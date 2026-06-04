@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Drawer, ConfirmModal } from '@/components/ui/overlays';
 import { Button, Field, Input, Textarea, Spinner, ToggleSwitch, Tag } from '@/components/ui/primitives';
-import { getVoca, patchVoca, hideVoca, showVoca, tagVocaExamples } from '@/lib/endpoints';
+import { getVoca, patchVoca, hideVoca, showVoca } from '@/lib/endpoints';
 import { ApiError } from '@/lib/api';
 import EmphasisField from '../vocaBooks/EmphasisField';
 
@@ -33,7 +33,6 @@ export default function VocaDetailDrawer({
   const [active, setActive] = useState(initialActive);
   const [toggling, setToggling] = useState(false);
   const [confirmHide, setConfirmHide] = useState(false);
-  const [tagging, setTagging] = useState(false);
 
   const handleApiError = useCallback((e, fallback) => {
     if (e instanceof ApiError && e.status === 401) { onAuthError?.(); return; }
@@ -102,40 +101,21 @@ export default function VocaDetailDrawer({
         meanings: form.meanings.map((m) => ({ id: m.id, meaning: m.meaning })),
         examples: form.examples.map((ex) => ({ id: ex.id, exam_en: ex.exam_en, exam_ko: ex.exam_ko })),
       };
-      await patchVoca(vocaId, patch);
-      toast.success('단어를 저장했습니다.');
+      const res = await patchVoca(vocaId, patch);
+      const saved = res?.data?.examples;
+      if (Array.isArray(saved)) {
+        // 저장 시 백엔드가 강조 안 된 예문을 자동 태깅 → 결과를 폼에 반영
+        setForm((f) => ({
+          ...f,
+          examples: saved.map((ex) => ({ id: ex.id, exam_en: ex.exam_en || '', exam_ko: ex.exam_ko || '' })),
+        }));
+      }
+      toast.success('저장 완료. 강조가 자동 적용되었습니다.');
       onSaved?.(vocaId);
     } catch (e) {
       handleApiError(e, '저장에 실패했습니다.');
     } finally {
       setSaving(false);
-    }
-  };
-
-  // ── 예문 강조 자동 태깅 (미리보기 → form 반영, 저장은 기존 handleSave) ──
-  const handleAutoTag = async () => {
-    const taggable = form.examples.filter((ex) => ex.id != null);
-    if (taggable.length === 0) {
-      toast.error('태깅할 예문이 없습니다. (저장된 예문만 자동 태깅됩니다)');
-      return;
-    }
-    setTagging(true);
-    try {
-      const res = await tagVocaExamples(vocaId);
-      const tagged = res?.data?.examples || [];
-      const byId = new Map(tagged.map((t) => [t.id, t]));
-      setForm((f) => ({
-        ...f,
-        examples: f.examples.map((ex) => {
-          const t = ex.id != null ? byId.get(ex.id) : null;
-          return t ? { ...ex, exam_en: t.exam_en || '', exam_ko: t.exam_ko || '' } : ex;
-        }),
-      }));
-      toast.success('예문 강조를 적용했습니다. 확인 후 [저장]을 눌러주세요.');
-    } catch (e) {
-      handleApiError(e, '예문 강조 태깅에 실패했습니다.');
-    } finally {
-      setTagging(false);
     }
   };
 
@@ -247,10 +227,7 @@ export default function VocaDetailDrawer({
           <section className="bg-white border border-layout-gray-100 rounded-xl p-4 space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-bold text-layout-black">예문 ({form.examples.length})</h4>
-              <div className="flex items-center gap-2">
-                <Button variant="blue" size="sm" loading={tagging} onClick={handleAutoTag}>예문 강조 자동 태깅</Button>
-                <Button variant="secondary" size="sm" onClick={addExample}>+ 예문 추가</Button>
-              </div>
+              <Button variant="secondary" size="sm" onClick={addExample}>+ 예문 추가</Button>
             </div>
             {form.examples.length === 0 ? (
               <p className="text-xs text-layout-gray-300 py-2">등록된 예문이 없습니다.</p>

@@ -35,7 +35,6 @@ const COLUMNS = [
   { key: 'is_registered', label: '서점', sortable: true },
   { key: 'username', label: '작성자', sortable: true },
   { key: 'updated_at', label: '수정일', sortable: true },
-  { key: '_actions', label: '편집', sortable: false, align: 'right' },
 ];
 
 const SOURCE_TONE = { 'AI 생성': 'purple', '직접 제작': 'green' };
@@ -168,7 +167,11 @@ export default function VocaBooksPage({ onAuthError }) {
                     <td className="px-4 py-3 whitespace-nowrap">
                       <Tag tone={b.book_type === 'admin' ? 'purple' : 'blue'}>{b.book_type === 'admin' ? '관리자' : '기본'}</Tag>
                     </td>
-                    <td className="px-4 py-3 font-medium text-layout-black max-w-[320px] truncate" title={b.book_nm}>{b.book_nm}</td>
+                    <td
+                      className="px-4 py-3 font-medium text-primary-main-600 max-w-[320px] truncate cursor-pointer hover:underline"
+                      title={b.book_nm}
+                      onClick={() => setEditing({ id: b.id, book_type: b.book_type, raw: b })}
+                    >{b.book_nm}</td>
                     <td className="px-4 py-3 text-layout-gray-500 whitespace-nowrap">{b.language || '-'}</td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       {b.source ? <Tag tone={SOURCE_TONE[b.source] || 'gray'}>{b.source}</Tag> : <span className="text-layout-gray-300">-</span>}
@@ -182,9 +185,6 @@ export default function VocaBooksPage({ onAuthError }) {
                     </td>
                     <td className="px-4 py-3 text-layout-gray-500 whitespace-nowrap">{b.username || '-'}</td>
                     <td className="px-4 py-3 text-layout-gray-400 text-xs whitespace-nowrap">{formatDateShort(b.updated_at)}</td>
-                    <td className="px-4 py-3 text-right whitespace-nowrap">
-                      <Button size="sm" variant="secondary" onClick={() => setEditing({ id: b.id, book_type: b.book_type, raw: b })}>편집</Button>
-                    </td>
                   </tr>
                 ))}
               </tbody>

@@ -8,7 +8,6 @@ import { ApiError } from '@/lib/api';
 import AdminWordRow from './AdminWordRow';
 import AdminWordAddForm from './AdminWordAddForm';
 import BookstoreInlineForm from './BookstoreInlineForm';
-import TagExamplesModal from './TagExamplesModal';
 
 const SOURCE_OPTIONS = ['AI 생성', '직접 제작'];
 
@@ -18,7 +17,6 @@ export default function AdminBookDrawer({ bookId, onClose, onChanged, onAuthErro
   const [bookstore, setBookstore] = useState(null);
   const [words, setWords] = useState([]);
   const [wordFilter, setWordFilter] = useState('');
-  const [tagOpen, setTagOpen] = useState(false);
 
   // 메타 폼
   const [meta, setMeta] = useState({ book_nm: '', language: '', source: '', category: '', username: '' });
@@ -169,14 +167,11 @@ export default function AdminBookDrawer({ bookId, onClose, onChanged, onAuthErro
           <section className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-sm font-bold text-layout-black">단어 <span className="text-layout-gray-300 font-normal">({words.length})</span></h3>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text" placeholder="단어/의미 필터" value={wordFilter}
-                  onChange={(e) => setWordFilter(e.target.value)}
-                  className="bg-white border border-layout-gray-100 text-xs text-layout-black rounded-lg px-2 py-1.5 w-40 focus:outline-none focus:border-primary-main-400"
-                />
-                <Button size="sm" variant="blue" onClick={() => setTagOpen(true)}>예문 강조 자동 태깅</Button>
-              </div>
+              <input
+                type="text" placeholder="단어/의미 필터" value={wordFilter}
+                onChange={(e) => setWordFilter(e.target.value)}
+                className="bg-white border border-layout-gray-100 text-xs text-layout-black rounded-lg px-2 py-1.5 w-40 focus:outline-none focus:border-primary-main-400"
+              />
             </div>
 
             <AdminWordAddForm bookId={bookId} onAdded={onWordAdded} onAuthError={onAuthError} toast={toast} />
@@ -202,15 +197,6 @@ export default function AdminBookDrawer({ bookId, onClose, onChanged, onAuthErro
         </>
       )}
 
-      {tagOpen && (
-        <TagExamplesModal
-          bookId={bookId}
-          onClose={() => setTagOpen(false)}
-          onSaved={() => { setTagOpen(false); load(); }}
-          onAuthError={onAuthError}
-          toast={toast}
-        />
-      )}
     </Drawer>
   );
 }

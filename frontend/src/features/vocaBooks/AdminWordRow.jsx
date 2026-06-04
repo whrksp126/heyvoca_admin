@@ -1,8 +1,9 @@
 // AdminVocaBook 단어 한 행 — 의미 chip + 예문(원어/의미) 인라인 편집 + 저장/삭제.
 // 사전(voca) 패널에서 의미/예문을 클릭으로 수입(M11)할 수 있다.
 import React, { useEffect, useState } from 'react';
-import { Button, Input, Tag } from '@/components/ui/primitives';
+import { Button, Tag } from '@/components/ui/primitives';
 import { ConfirmModal } from '@/components/ui/overlays';
+import { FloppyDisk, Trash, BookOpen } from '@phosphor-icons/react';
 import { patchAdminWord, deleteAdminWord, getVocaDictionary } from '@/lib/endpoints';
 import { ApiError } from '@/lib/api';
 import { exOrigin, exMeaning, emphasisLevel } from './helpers';
@@ -18,7 +19,6 @@ const DOT = {
 export default function AdminWordRow({ bookId, word, onUpdated, onDeleted, onAuthError, toast }) {
   const [meanings, setMeanings] = useState(word.meanings || []);
   const [examples, setExamples] = useState((word.examples || []).map((ex) => ({ origin: exOrigin(ex), meaning: exMeaning(ex) })));
-  const [level, setLevel] = useState(word.level ?? '');
   const [newMeaning, setNewMeaning] = useState('');
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -35,7 +35,6 @@ export default function AdminWordRow({ bookId, word, onUpdated, onDeleted, onAut
   useEffect(() => {
     setMeanings(word.meanings || []);
     setExamples((word.examples || []).map((ex) => ({ origin: exOrigin(ex), meaning: exMeaning(ex) })));
-    setLevel(word.level ?? '');
     setDirty(false);
     setRawWarn(word.parse_error || false);
     setDictOpen(false);
@@ -75,15 +74,16 @@ export default function AdminWordRow({ bookId, word, onUpdated, onDeleted, onAut
   const handleSave = async () => {
     setSaving(true);
     try {
-      const res = await patchAdminWord(bookId, word.map_id, {
-        meanings,
-        examples,
-        level: level === '' ? null : Number(level),
-      });
+      const res = await patchAdminWord(bookId, word.map_id, { meanings, examples });
+      // 저장 시 백엔드가 강조 안 된 예문을 자동 태깅 → 결과 반영
+      const saved = res?.data?.examples;
+      if (Array.isArray(saved)) {
+        setExamples(saved.map((ex) => ({ origin: exOrigin(ex), meaning: exMeaning(ex) })));
+      }
       onUpdated?.(res?.data);
       setDirty(false);
       setRawWarn(false);
-      toast?.success('단어를 저장했습니다.');
+      toast?.success('저장 완료. 강조가 자동 적용되었습니다.');
     } catch (e) {
       handleErr(e, '단어 저장에 실패했습니다.');
     } finally {
@@ -137,16 +137,15 @@ export default function AdminWordRow({ bookId, word, onUpdated, onDeleted, onAut
           )}
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
-          <Button size="sm" variant={dictOpen ? 'blue' : 'secondary'} onClick={toggleDict}>사전</Button>
-          <Input
-            type="number"
-            value={level}
-            onChange={(e) => { setLevel(e.target.value); markDirty(); }}
-            placeholder="lv"
-            className="w-14 px-2 py-1.5"
-          />
-          <Button size="sm" onClick={handleSave} disabled={!dirty || saving || deleting} loading={saving}>저장</Button>
-          <Button size="sm" variant="danger" onClick={() => setConfirmDel(true)} disabled={saving || deleting}>삭제</Button>
+          <Button size="sm" variant={dictOpen ? 'blue' : 'secondary'} onClick={toggleDict} title="사전" aria-label="사전">
+            <BookOpen size={16} weight="bold" />
+          </Button>
+          <Button size="sm" onClick={handleSave} disabled={!dirty || saving || deleting} loading={saving} title="저장" aria-label="저장">
+            <FloppyDisk size={16} weight="bold" />
+          </Button>
+          <Button size="sm" variant="danger" onClick={() => setConfirmDel(true)} disabled={saving || deleting} title="삭제" aria-label="삭제">
+            <Trash size={16} weight="bold" />
+          </Button>
         </div>
       </div>
 
