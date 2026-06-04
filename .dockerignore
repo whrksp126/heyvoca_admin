@@ -15,3 +15,8 @@ CLAUDE.md
 .dockerignore
 Dockerfile.local
 docker-compose.local.yml
+# 프론트 의존성 (Dockerfile node 스테이지에서 npm ci 재설치)
+frontend/node_modules
+frontend/.vite
+# SPA 산출물은 이미지 node 스테이지가 빌드 → host 산출물 제외 (멀티스테이지 COPY 로 주입)
+app/static/spa

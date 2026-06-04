@@ -1,5 +1,5 @@
 # app/__init__.py
-from flask import Flask, redirect, url_for
+from flask import Flask, request, jsonify, redirect
 from config import Config
 from app.extensions import db, login_manager
 from uuid import UUID
@@ -10,40 +10,34 @@ def create_app(config_class=Config):
 
     db.init_app(app)
     login_manager.init_app(app)
-    login_manager.login_view = 'auth.login'
-    login_manager.login_message = '로그인이 필요한 페이지입니다.'
 
-    from app.routes import auth, bookstore, voca
+    # 블루프린트 등록
+    #   auth      : Admin 세션 로그인/로그아웃 (JSON)
+    #   ai        : OpenAI 단어 생성 (/api/ai/*)
+    #   api_proxy : heyvoca_back /admin/* 제너릭 프록시 (/api/*)
+    #   spa       : React SPA catch-all (마지막)
+    from app.routes import auth, ai, api_proxy, spa
     app.register_blueprint(auth.bp, url_prefix='/auth')
-    app.register_blueprint(bookstore.bp, url_prefix='/bookstore')
-    app.register_blueprint(voca.bp, url_prefix='/voca')
+    app.register_blueprint(ai.bp)
+    app.register_blueprint(api_proxy.bp)
+    app.register_blueprint(spa.bp)
 
     from app.models.models import Admin
 
     @login_manager.user_loader
     def load_user(user_id):
         try:
-            # UUID로 변환
             if not isinstance(user_id, UUID):
                 user_id = UUID(user_id)
-            
-            # Admin 계정만 확인 (관리자 페이지)
             return Admin.query.get(user_id)
         except Exception:
             return None
 
     @login_manager.unauthorized_handler
     def unauthorized():
-        # 로그인하지 않은 사용자를 로그인 페이지로 리디렉트
-        return redirect(url_for('auth.login'))
-
-    @app.route('/')
-    def index():
-        # 루트 경로는 bookstore 목록으로 리디렉트
-        from flask_login import current_user
-        if current_user.is_authenticated:
-            return redirect(url_for('bookstore.bookstore_list'))
-        else:
-            return redirect(url_for('auth.login'))
+        # API(XHR)는 401 JSON, 그 외는 SPA 루트로 (React 가 로그인 화면 표시)
+        if request.path.startswith('/api'):
+            return jsonify({'code': 401, 'message': 'Unauthorized'}), 401
+        return redirect('/')
 
     return app

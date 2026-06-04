@@ -10,6 +10,9 @@ services:
       - ./.env.dev
     volumes:
       - ./app:/app/app
+      # 소스 reload 용으로 ./app 을 마운트하되, 이미지에 빌드된 SPA 산출물은
+      # 익명 볼륨으로 보존(host 의 빈 app/static/spa 로 가려지지 않게)
+      - /app/app/static/spa
       - ./application.py:/app/application.py
       - ./run.py:/app/run.py
       - ./config.py:/app/config.py

@@ -9,5 +9,10 @@ __pycache__/
 env/
 venv/
 .venv/
-*.db 
+*.db
 deploy.zip
+
+# React SPA 빌드 산출물 (deploy.sh 가 빌드 시 생성)
+app/static/spa/
+# 프론트 의존성
+frontend/node_modules/

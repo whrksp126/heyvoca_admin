@@ -1,0 +1,92 @@
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* heyvoca_service 디자인 시스템 토큰 (Figma) — 어드민 라이트 테마 */
+:root {
+  --primary-main-600: #FF70D4;
+  --primary-main-500: #FF88DC;
+  --primary-main-400: #FFAAE6;
+  --primary-main-300: #FFBDEB;
+  --primary-main-200: #FFD7F3;
+  --primary-main-100: #FFEEFA;
+  --primary-main-50: #FFF4FC;
+
+  --secondary-blue-600: #2E90FA;
+  --secondary-blue-500: #53B1FD;
+  --secondary-blue-400: #84CAFF;
+  --secondary-blue-300: #B2DDFF;
+  --secondary-blue-200: #D1E9FF;
+  --secondary-blue-100: #EFF8FF;
+  --secondary-blue-50: #F5FAFF;
+
+  --secondary-purple-600: #7A5AF8;
+  --secondary-purple-500: #9B8AFB;
+  --secondary-purple-400: #BDB4FE;
+  --secondary-purple-300: #D9D6FE;
+  --secondary-purple-200: #EBE9FE;
+  --secondary-purple-100: #F4F3FF;
+  --secondary-purple-50: #FAFAFF;
+
+  --secondary-yellow-600: #FB6514;
+  --secondary-yellow-500: #FD853A;
+  --secondary-yellow-400: #FEB273;
+  --secondary-yellow-300: #FDDCAB;
+  --secondary-yellow-200: #FFEAD5;
+  --secondary-yellow-100: #FFF8E5;
+  --secondary-yellow-50: #FFFAF5;
+
+  --secondary-mint-600: #00D0BF;
+  --secondary-mint-500: #34E8D9;
+  --secondary-mint-400: #73EBE1;
+  --secondary-mint-300: #97F4ED;
+  --secondary-mint-200: #C1FDF8;
+  --secondary-mint-100: #E8FDFB;
+  --secondary-mint-50: #EAFFFD;
+
+  --status-success-600: #12B76A;
+  --status-success-500: #32D583;
+  --status-success-400: #6CE9A6;
+  --status-success-300: #A6F4C5;
+  --status-success-200: #D1FADF;
+  --status-success-100: #ECFDF3;
+  --status-success-50: #F6FEF9;
+
+  --status-error-600: #FA5145;
+  --status-error-500: #F97066;
+  --status-error-400: #FDA29B;
+  --status-error-300: #FECDCA;
+  --status-error-200: #FEE4E2;
+  --status-error-100: #FEF3F2;
+  --status-error-50: #FFFBFA;
+
+  --layout-black: #111111;
+  --layout-white: #ffffff;
+  --layout-gray-500: #404040;
+  --layout-gray-400: #7B7B7B;
+  --layout-gray-300: #999999;
+  --layout-gray-200: #CCCCCC;
+  --layout-gray-100: #DDDDDD;
+  --layout-gray-50: #F5F5F5;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: 'Pretendard Variable', -apple-system, BlinkMacSystemFont, system-ui, 'Noto Sans KR', sans-serif;
+  background: var(--layout-gray-50);
+  color: var(--layout-black);
+}
+
+/* 사전 예문 강조 */
+.target-word { font-weight: 700; color: var(--primary-main-600); }
+
+/* 얇은 스크롤바 */
+.thin-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+.thin-scroll::-webkit-scrollbar-thumb { background: var(--layout-gray-200); border-radius: 8px; }
+.thin-scroll::-webkit-scrollbar-track { background: transparent; }
