@@ -2,26 +2,30 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-heyvoca 어드민 웹 (Flask 3 + Jinja2 SSR). 자체 비즈니스 로직은 거의 없고, heyvoca_back의 `/admin/*` API를 호출하는 thin client. 배포는 AWS Elastic Beanstalk.
+heyvoca 어드민 (Flask 3 백엔드 + React SPA 프론트). 자체 비즈니스 로직은 거의 없고, heyvoca_back의 `/admin/*` API를 호출하는 thin client (Flask 프록시가 `X-Admin-API-Key` 주입 → 키 브라우저 비노출). **배포는 ghmate 홈서버 Docker (dev/stg/prod) — `./deploy.sh dev|stg|prod`.**
+
+> ⚠️ 과거 AWS Elastic Beanstalk + Jinja2 SSR 였으나 2026-06 에 **React SPA 전환 + 홈서버 Docker 이전 완료**. EB/Jinja2/zip 배포는 폐기. (`application.py`/`.ebextensions/`/`deploy.zip` 등은 잔재 — 배포 경로 아님)
 
 ---
 
 ## Commands
 
 ```bash
-pip install -r requirements.txt
-python run.py                        # 로컬 실행 (debug=True)
+# 로컬 (docker) — 컨테이너 heyvoca_admin_local (포트 5101)
+#   프론트는 host 에서 `cd frontend && npm run build` 후 볼륨 마운트
+docker compose -f docker-compose.local.yml up --build -d
 
-# 배포 (AWS Elastic Beanstalk)
-bash deploy.sh                       # deploy.zip 생성
-# EB 콘솔 → Upload and Deploy → deploy.zip   또는   eb deploy
+# 배포 (홈서버 docker — heyvoca_service 와 동일 방식: SSH → git pull → up --build)
+./deploy.sh dev
+./deploy.sh stg
+./deploy.sh prod
 ```
 
 ---
 
 ## Architecture
 
-Flask 3.0 + SQLAlchemy 2.0 + Flask-Login. 서버사이드 렌더링(Jinja2), React 아님.
+Flask 3.0 + SQLAlchemy 2.0 + Flask-Login (인증/세션) + **React SPA(`frontend/`, Vite+Tailwind)**. Flask 는 ① 세션 인증(`/auth/*`) ② 보안 프록시(`/api/<path>`→heyvoca_back `/admin/<path>`, X-Admin-API-Key 주입) ③ SPA 서빙(catch-all→`app/static/spa/index.html`) 담당. Jinja2 SSR 아님(폐기).
 
 ### 진입점
 
@@ -100,19 +104,21 @@ ANTHROPIC_API_KEY=...
 
 ---
 
-## 배포 (AWS Elastic Beanstalk)
+## 배포 (홈서버 Docker)
 
-heyvoca_service와 달리 **Docker 안 씀**. EB Python 플랫폼 기반.
+heyvoca_service 와 동일하게 ghmate 홈서버 Docker 로 dev/stg/prod 운영. `deploy.sh` 가 SSH → git pull → 빌드까지 자동.
 
 ```bash
-bash deploy.sh                       # deploy.zip 생성 (.env, .git, __pycache__, venv 제외)
-# AWS EB 콘솔 → Upload and Deploy → deploy.zip
-# 또는: eb deploy
+./deploy.sh dev    # SSH → /srv/projects/heyvoca_admin git pull → docker compose -p heyvoca_admin_dev up --build -d admin → nginx reload → 부팅 헬스체크
+./deploy.sh stg
+./deploy.sh prod   # compose 파일은 docker-compose.yml
 ```
 
-`.ebextensions/`:
-- `01_flask.config` — `WSGIPath: application:application`, `/static` → `app/static`
-- `02_python.config` — `FLASK_ENV=production`, `PYTHONUNBUFFERED=1`
+- 서버 경로: `/srv/projects/heyvoca_admin` (git `main`)
+- 컨테이너: `heyvoca_admin_{dev,stg,prod}` (gunicorn `run:app`, 내부 :5000), 글로벌 `nginx_proxy` 네트워크 조인
+- 도메인: `dev-heyvoca-admin` / `stg-heyvoca-admin` / `heyvoca-admin.ghmate.com` (nginx-proxy/conf.d/heyvoca.conf)
+- 멀티스테이지 Dockerfile 이 **서버에서** node 로 vite 빌드 후 python 런타임 구성 (로컬 npm 빌드 불필요)
+- SSH: `ssh -i ~/.ssh/ghmate_server -p 222 ghmate@ghmate.iptime.org`
 
 ---
 
@@ -120,7 +126,7 @@ bash deploy.sh                       # deploy.zip 생성 (.env, .git, __pycache_
 
 - 비즈니스 로직 99%는 `heyvoca_back /admin/*` 호출 — 라우트 파일이 얇음. 데이터 변경 로직은 백엔드 쪽 admin blueprint에서 찾아야 함
 - admin API 인증은 `X-Admin-API-Key` 헤더. heyvoca_back에 `X-Admin-Token` 흔적도 보이는데 실제 호출 시 어떤 헤더를 쓰는지 코드 직접 확인
-- `application = create_app()` — EB는 `application` 객체명 고정. `app`으로 바꾸면 EB 안 뜸
-- `bash.exe.stackdump`, `deploy.zip`이 레포에 커밋돼 있음 (정리 안 됨) — 작업 중 같이 덮어쓰지 않도록 주의
+- gunicorn 진입점은 `run:app` (Dockerfile/compose CMD). `application.py`(구 EB `application` 객체)는 잔재 — 현재 배포 경로 아님
+- `deploy.zip`, `bash.exe.stackdump`, `.ebextensions/` 는 구 EB 잔재 (배포와 무관) — 작업 중 덮어쓰지 않도록 주의
 - `Admin` 모델은 `is_active`/`is_authenticated`를 메소드로 정의 (Flask-Login은 보통 property 기대) — 동작은 하지만 손볼 일 있으면 인지
 - `config.py`의 `_build_db_url()`은 `DATABASE_URL` 비밀번호에 미인코딩 `@`가 있으면 None 반환하고 개별 env로 폴백
