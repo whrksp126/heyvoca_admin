@@ -51,7 +51,9 @@ ssh -i "$SSH_KEY" -p "$SSH_PORT" "${SSH_USER}@${SSH_HOST}" "
     echo '>>> git pull...'
     git pull
     echo '>>> docker build & up...'
-    docker compose -p ${PROJECT_NAME} -f ${COMPOSE_FILE} up --build -d admin
+    # --renew-anon-volumes: dev 의 SPA 익명 볼륨(/app/app/static/spa)이 옛 빌드를 붙들지 않게
+    #   매 배포마다 새 이미지의 빌드 산출물로 갱신. (stg/prod 는 익명 볼륨 없어 무해)
+    docker compose -p ${PROJECT_NAME} -f ${COMPOSE_FILE} up --build -d --force-recreate --renew-anon-volumes admin
     echo '>>> nginx reload (IP 캐시 갱신)...'
     docker exec nginx_proxy nginx -s reload
 "
