@@ -81,3 +81,9 @@ export const getProgress = () => apiGet('/api/progress');                       
 export const getMetrics = (days = 7) => apiGet(`/api/study/metrics${buildQuery({ days })}`); // M4
 export const getHealth = () => apiGet('/api/fsrs/health');                      // M5
 export const getRecentSessions = (limit = 20) => apiGet(`/api/study/recent-sessions${buildQuery({ limit })}`);
+
+// ──────────────────────────────────────────────────────────
+// TTS 모니터링 (ElevenLabs 토큰 잔량 + fallback 통계)
+// ──────────────────────────────────────────────────────────
+export const getTtsQuota = () => apiGet('/api/tts/quota');
+export const getTtsStats = (days = 7) => apiGet(`/api/tts/stats${buildQuery({ days })}`);
