@@ -32,19 +32,40 @@ function fmtDay(d) {
   return `${Number(d.slice(4, 6))}/${Number(d.slice(6, 8))}`;
 }
 
+// 조회 실패 원인(reason)별 안내 문구. 백엔드 /admin/tts/quota 의 data.reason 과 매칭.
+function reasonText(reason) {
+  switch (reason) {
+    case 'permission':
+      return "ElevenLabs API 키에 'user_read' 권한이 없습니다. ElevenLabs 콘솔 → API Keys → 해당 키 편집 → User 카테고리의 Read 권한을 켜면 즉시 해결됩니다 (키 문자열이 같으면 재배포 불필요).";
+    case 'quota':
+      return '토큰(문자) 잔액이 모두 소진되었습니다. 신규 영어 음성은 자동으로 gTTS(무료)로 생성됩니다.';
+    case 'rate_limit':
+      return '요청이 일시적으로 제한되었습니다(429). 잠시 후 다시 조회하세요.';
+    case 'config':
+      return 'ELEVENLABS_API_KEY가 설정되어 있지 않습니다.';
+    case 'network':
+      return '백엔드/네트워크 연결에 실패했습니다.';
+    default:
+      return '잔량 조회에 실패했습니다.';
+  }
+}
+
 function QuotaCard({ quota, error }) {
   if (error) {
     return (
       <Card className="p-6 border-status-error-200 bg-status-error-50">
         <div className="text-sm font-bold text-status-error-600">ElevenLabs 토큰 조회 실패</div>
-        <div className="text-xs text-status-error-600 mt-1">{error}</div>
+        <div className="text-xs text-status-error-600 mt-1">{reasonText(error.reason)}</div>
+        {error.message && (
+          <div className="text-[11px] text-layout-gray-400 mt-2 break-all">원문: {error.message}</div>
+        )}
         <div className="text-[11px] text-layout-gray-400 mt-2">
-          키 만료·인증 오류일 수 있습니다. 이 상태에서는 신규 영어 음성이 gTTS(무료)로 자동 생성됩니다.
+          이 상태에서도 신규 영어 음성은 gTTS(무료)로 자동 생성되어 서비스는 정상 동작합니다.
         </div>
       </Card>
     );
   }
-  if (!quota) return null;
+  if (!quota || quota.ok === false) return null;
 
   const ratio = quota.usage_ratio; // 0~1 (사용 비율)
   const usedPct = ratio != null ? Math.round(ratio * 100) : null;
@@ -160,11 +181,18 @@ export default function TtsMonitorPage({ onAuthError }) {
 
     let authError = false;
     if (qRes.status === 'fulfilled') {
-      setQuota(qRes.value?.data);
-      setQuotaErr(null);
+      const d = qRes.value?.data;
+      if (d && d.ok === false) {
+        // 백엔드가 200 + {ok:false, reason, message} 로 실패를 표현(5xx면 Cloudflare가 가로챔)
+        setQuota(null);
+        setQuotaErr({ reason: d.reason, message: d.message, status_code: d.status_code });
+      } else {
+        setQuota(d);
+        setQuotaErr(null);
+      }
     } else {
       if (qRes.reason instanceof ApiError && qRes.reason.status === 401) authError = true;
-      else setQuotaErr(qRes.reason?.message || '조회 실패');
+      else setQuotaErr({ reason: 'network', message: qRes.reason?.message || '조회 실패' });
     }
     if (sRes.status === 'fulfilled') {
       setStats(sRes.value?.data);
