@@ -2,7 +2,7 @@
 import React, { useRef } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
-  ChartLineUp, Books, Translate, Storefront, SpeakerHigh, SignOut,
+  ChartLineUp, Books, Translate, Storefront, SpeakerHigh, Waveform, SignOut,
 } from '@phosphor-icons/react';
 import { ScrollContext } from '@/lib/scrollContext';
 
@@ -12,6 +12,7 @@ const NAV = [
   { to: '/voca', label: '단어 관리', icon: Translate },
   { to: '/bookstore', label: '북스토어', icon: Storefront },
   { to: '/tts', label: 'TTS 모니터링', icon: SpeakerHigh },
+  { to: '/tts-test', label: 'TTS 테스트', icon: Waveform },
 ];
 
 export default function AdminShell({ userId, onLogout, children }) {
