@@ -6,7 +6,24 @@ import { ApiError } from '@/lib/api';
 import { getTtsVoices, previewTts } from '@/lib/endpoints';
 import { useToast } from '@/lib/toast';
 
-const LANGS = [{ v: 'en', label: '영어' }, { v: 'ko', label: '한국어' }];
+// Edge TTS는 74개 언어 지원. 주요 언어만 노출(voice 목록은 백엔드가 locale prefix로 조회).
+const LANGS = [
+  { v: 'en', label: '영어' },
+  { v: 'ko', label: '한국어' },
+  { v: 'ja', label: '일본어' },
+  { v: 'zh', label: '중국어 (본토·대만·홍콩)' },
+  { v: 'es', label: '스페인어' },
+  { v: 'fr', label: '프랑스어' },
+  { v: 'de', label: '독일어' },
+  { v: 'it', label: '이탈리아어' },
+  { v: 'pt', label: '포르투갈어' },
+  { v: 'ru', label: '러시아어' },
+  { v: 'vi', label: '베트남어' },
+  { v: 'th', label: '태국어' },
+  { v: 'id', label: '인도네시아어' },
+  { v: 'hi', label: '힌디어' },
+  { v: 'ar', label: '아랍어' },
+];
 const fmtSigned = (n, unit) => `${n >= 0 ? '+' : ''}${n}${unit}`;
 
 export default function TtsTestPage({ onAuthError }) {
