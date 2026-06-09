@@ -1,7 +1,7 @@
 // 통합 어드민 전체 엔드포인트 매핑.
 // 인벤토리(T#=팀원, M#=내 기존) 기능을 빠짐없이 커버한다.
 // 모든 경로는 Flask 프록시(/api/*) → heyvoca_back /admin/* 로 전달.
-import { apiGet, apiPost, apiPatch, apiDelete, apiUpload, buildQuery, ApiError } from './api';
+import { apiGet, apiPost, apiPatch, apiDelete, apiUpload, buildQuery } from './api';
 
 // ──────────────────────────────────────────────────────────
 // AdminVocaBook — 내 하이픈 API (M7~M16 베이스 UX)
@@ -81,25 +81,3 @@ export const getProgress = () => apiGet('/api/progress');                       
 export const getMetrics = (days = 7) => apiGet(`/api/study/metrics${buildQuery({ days })}`); // M4
 export const getHealth = () => apiGet('/api/fsrs/health');                      // M5
 export const getRecentSessions = (limit = 20) => apiGet(`/api/study/recent-sessions${buildQuery({ limit })}`);
-
-// ──────────────────────────────────────────────────────────
-// TTS 모니터링 (ElevenLabs 토큰 잔량 + fallback 통계)
-// ──────────────────────────────────────────────────────────
-export const getTtsQuota = () => apiGet('/api/tts/quota');
-export const getTtsStats = (days = 7) => apiGet(`/api/tts/stats${buildQuery({ days })}`);
-
-// TTS 테스트(미리듣기) — voices는 JSON, preview는 audio/mpeg blob 반환
-export const getTtsVoices = (engine, language) => apiGet(`/api/tts/voices${buildQuery({ engine, language })}`);
-export const previewTts = async (payload) => {
-  const res = await fetch('/api/tts/preview', {
-    method: 'POST',
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) {
-    const j = await res.json().catch(() => ({}));
-    throw new ApiError(j?.message || `생성 실패 (${res.status})`, res.status, j);
-  }
-  return res.blob();
-};
