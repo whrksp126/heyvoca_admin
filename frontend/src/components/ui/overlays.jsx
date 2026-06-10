@@ -11,18 +11,21 @@ function useEscClose(onClose) {
   }, [onClose]);
 }
 
-export function Modal({ open = true, onClose, title, children, footer, size = 'md' }) {
-  useEscClose(onClose);
+export function Modal({ open = true, onClose, title, children, footer, size = 'md', dismissible = true }) {
+  // dismissible=false면 배경 클릭/Esc/X로 닫히지 않음(작업 진행 중 이탈 방지).
+  useEscClose(dismissible ? onClose : undefined);
   if (!open) return null;
   const maxW = { sm: 'max-w-md', md: 'max-w-lg', lg: 'max-w-2xl', xl: 'max-w-4xl' }[size] || 'max-w-lg';
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
-      <div className="absolute inset-0 bg-layout-black/40 animate-fade-in" onClick={onClose} />
+      <div className="absolute inset-0 bg-layout-black/40 animate-fade-in" onClick={dismissible ? onClose : undefined} />
       <div className={cx('relative w-full bg-white rounded-2xl shadow-xl flex flex-col max-h-[90vh] animate-fade-in', maxW)}>
         {title && (
           <header className="flex items-center justify-between px-5 py-4 border-b border-layout-gray-100">
             <h3 className="text-base font-bold text-layout-black">{title}</h3>
-            <button onClick={onClose} className="w-8 h-8 grid place-items-center rounded-lg hover:bg-layout-gray-50 text-layout-gray-400">✕</button>
+            {dismissible && (
+              <button onClick={onClose} className="w-8 h-8 grid place-items-center rounded-lg hover:bg-layout-gray-50 text-layout-gray-400">✕</button>
+            )}
           </header>
         )}
         <div className="flex-1 overflow-y-auto thin-scroll px-5 py-4">{children}</div>

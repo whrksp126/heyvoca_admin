@@ -1,8 +1,9 @@
 // 사전 동기화 — objectstore 허브 기준 올리기(발행)/내려받기(적용)/버전이력.
-// 파괴적 작업이라 모든 액션에 경고 + 이중 확인(ConfirmModal 2단계).
+// 파괴적 작업이라 단일 모달 안에서 '경고 → 최종확인' 스텝으로 진행하고,
+// 작업 중(busy)에는 전체 화면을 잠가 다른 클릭/이동을 막는다.
 import React, { useState, useEffect, useCallback } from 'react';
 import { Button, Card, Tag, Spinner, Textarea, Field } from '@/components/ui/primitives';
-import { Modal, ConfirmModal } from '@/components/ui/overlays';
+import { Modal } from '@/components/ui/overlays';
 import { ApiError } from '@/lib/api';
 import { useToast } from '@/lib/toast';
 import { getDictStatus, getDictVersions, publishDict, applyDict } from '@/lib/endpoints';
@@ -25,13 +26,10 @@ export default function DictSyncPage({ onAuthError }) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
-  // 올리기 모달
-  const [pubOpen, setPubOpen] = useState(false);
+  // 단일 모달 — action: {type:'publish'} | {type:'apply', target}, step으로 내부 전환
+  const [action, setAction] = useState(null);     // null = 닫힘
+  const [step, setStep] = useState(null);         // publish: form|confirm / apply: warn|confirm
   const [pubMsg, setPubMsg] = useState('');
-  const [pubConfirm, setPubConfirm] = useState(false);
-  // 내려받기/받기 — applyTarget: 적용할 버전 entry, step: 1=경고 2=최종확인
-  const [applyTarget, setApplyTarget] = useState(null);
-  const [applyStep, setApplyStep] = useState(0);
 
   const handleErr = useCallback((e, fallback) => {
     if (e instanceof ApiError && e.status === 401) { onAuthError?.(); return; }
@@ -49,12 +47,16 @@ export default function DictSyncPage({ onAuthError }) {
 
   useEffect(() => { load(); }, [load]);
 
+  const close = () => { if (busy) return; setAction(null); setStep(null); };
+  const openPublish = () => { setPubMsg(''); setAction({ type: 'publish' }); setStep('form'); };
+  const openApply = (target) => { setAction({ type: 'apply', target }); setStep('warn'); };
+
   const doPublish = async () => {
-    setPubConfirm(false); setBusy(true);
+    setBusy(true);
     try {
       const res = await publishDict({ confirm: true, message: pubMsg, expected_latest: status?.latest?.version || null });
       toast.success(`발행 완료: ${res?.data?.version}`);
-      setPubOpen(false); setPubMsg('');
+      setAction(null); setStep(null); setPubMsg('');
       await load();
     } catch (e) {
       if (e instanceof ApiError && e.status === 409) toast.error(e.message || '그새 다른 발행이 있었습니다. 새로고침 후 다시 시도하세요.');
@@ -63,11 +65,12 @@ export default function DictSyncPage({ onAuthError }) {
   };
 
   const doApply = async () => {
-    const target = applyTarget;
-    setApplyStep(0); setApplyTarget(null); setBusy(true);
+    const target = action?.target;
+    setBusy(true);
     try {
       const res = await applyDict({ confirm: true, version: target?.version || null });
       toast.success(`적용 완료: ${res?.data?.version}`);
+      setAction(null); setStep(null);
       await load();
     } catch (e) { handleErr(e, '적용에 실패했습니다.'); }
     finally { setBusy(false); }
@@ -79,14 +82,103 @@ export default function DictSyncPage({ onAuthError }) {
   const isProd = env === 'prod';
   const latest = status?.latest;
   const curVoca = status?.env_voca_count;
-  // 내려받기 대상(최신)과 버전별 단어 감소 경고 계산
-  const targetCounts = applyTarget?.counts?.voca;
-  const fewer = typeof targetCounts === 'number' && typeof curVoca === 'number' && targetCounts < curVoca;
+  const target = action?.target;
+  const targetVoca = target?.counts?.voca;
+  const fewer = typeof targetVoca === 'number' && typeof curVoca === 'number' && targetVoca < curVoca;
+
+  // ── 모달 본문/푸터(스텝별) ──
+  const renderModalBody = () => {
+    if (action?.type === 'publish') {
+      if (step === 'form') {
+        return (
+          <div className="space-y-4">
+            <div className="text-sm text-secondary-yellow-600 bg-secondary-yellow-100 rounded-lg px-3 py-2.5 leading-relaxed">
+              ⚠️ <b>{env.toUpperCase()}</b> 환경의 사전 전체가 objectstore <b>최신본</b>이 됩니다.
+              다른 환경은 '내려받기'로 이걸 받게 됩니다.
+              {status?.stale && (
+                <div className="mt-1.5 text-status-error-600">현재 허브 최신({latest?.version})과 다릅니다 — 올리면 그 내용을 덮어씁니다.</div>
+              )}
+            </div>
+            <Field label="변경 메모 (선택)" hint="무엇을 바꿨는지 적어두면 이력에서 확인됩니다.">
+              <Textarea rows={3} value={pubMsg} onChange={(e) => setPubMsg(e.target.value)}
+                placeholder="예: 토익 단어 120개 추가, 오타 수정" />
+            </Field>
+          </div>
+        );
+      }
+      // confirm 스텝(같은 모달 내부 전환)
+      return (
+        <div className="rounded-lg border border-layout-gray-100 bg-layout-gray-50 px-4 py-3.5">
+          <div className="text-sm font-bold text-layout-black mb-1">정말 발행할까요?</div>
+          <div className="text-sm text-layout-gray-400 leading-relaxed">
+            <b>{env.toUpperCase()}</b> 환경의 사전을 objectstore 최신으로 발행합니다.
+            이 작업 후 다른 환경은 이 버전을 받게 됩니다.
+          </div>
+          {pubMsg && <div className="text-xs text-layout-gray-300 mt-2">메모: {pubMsg}</div>}
+        </div>
+      );
+    }
+    // apply
+    if (step === 'warn') {
+      return (
+        <div className="text-sm bg-status-error-100 text-status-error-600 rounded-lg px-3 py-2.5 leading-relaxed">
+          이 환경(<b>{env.toUpperCase()}</b>)의 사전이 <b>'{target?.version}'</b> 버전으로 <b>전체 교체</b>됩니다 (병합 아님).<br />
+          대상 단어수 {nf(targetVoca)} · 현재 {nf(curVoca)}
+          {fewer && (
+            <div className="mt-1.5 font-semibold">
+              ⚠️ 선택 버전이 현재보다 단어가 {nf(curVoca - targetVoca)}개 적습니다.
+              {isProd && ' prod에서는 그 단어를 학습 중인 사용자 데이터에 영향이 갈 수 있습니다.'}
+            </div>
+          )}
+        </div>
+      );
+    }
+    // apply confirm
+    return (
+      <div className="rounded-lg border border-status-error-200 bg-status-error-100 px-4 py-3.5">
+        <div className="text-sm font-bold text-status-error-600 mb-1">되돌릴 수 없습니다. 진행할까요?</div>
+        <div className="text-sm text-layout-gray-500">
+          {env.toUpperCase()} 환경의 사전을 <b>'{target?.version}'</b>(으)로 지금 교체합니다. (적용 전 자동 백업됨)
+        </div>
+      </div>
+    );
+  };
+
+  const ghostBtn = 'px-3.5 py-2 text-sm rounded-lg border border-layout-gray-100 text-layout-gray-500 hover:bg-layout-gray-50';
+  const renderFooter = () => {
+    if (action?.type === 'publish') {
+      return step === 'form' ? (
+        <>
+          <button className={ghostBtn} onClick={close}>취소</button>
+          <Button onClick={() => setStep('confirm')}>다음</Button>
+        </>
+      ) : (
+        <>
+          <button className={ghostBtn} onClick={() => setStep('form')}>← 뒤로</button>
+          <Button onClick={doPublish}>발행</Button>
+        </>
+      );
+    }
+    return step === 'warn' ? (
+      <>
+        <button className={ghostBtn} onClick={close}>취소</button>
+        <Button variant="danger" onClick={() => setStep('confirm')}>계속</Button>
+      </>
+    ) : (
+      <>
+        <button className={ghostBtn} onClick={() => setStep('warn')}>← 뒤로</button>
+        <Button variant="danger" onClick={doApply}>적용</Button>
+      </>
+    );
+  };
+
+  const modalTitle = action?.type === 'publish'
+    ? '사전 올리기 (발행)'
+    : `사전 내려받기 — ${target?.version || ''}`;
 
   return (
     <div className="h-full overflow-y-auto thin-scroll">
       <div className="px-6 py-6 max-w-4xl mx-auto space-y-6">
-        {/* 헤더 */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-layout-black">사전 동기화</h1>
@@ -95,7 +187,6 @@ export default function DictSyncPage({ onAuthError }) {
           <Button variant="ghost" onClick={load}>새로고침</Button>
         </div>
 
-        {/* 상태 카드 */}
         <Card className="p-5">
           <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
             <div>
@@ -122,20 +213,13 @@ export default function DictSyncPage({ onAuthError }) {
           </div>
 
           <div className="flex gap-2 mt-5 pt-4 border-t border-layout-gray-100">
-            <Button onClick={() => { setPubMsg(''); setPubOpen(true); }}>
-              ⬆ 올리기 (이 환경 → 최신 발행)
-            </Button>
-            <Button
-              variant="secondary"
-              disabled={status?.never_published}
-              onClick={() => { setApplyTarget(latest); setApplyStep(1); }}
-            >
+            <Button onClick={openPublish}>⬆ 올리기 (이 환경 → 최신 발행)</Button>
+            <Button variant="secondary" disabled={status?.never_published} onClick={() => openApply(latest)}>
               ⬇ 내려받기 (최신 적용)
             </Button>
           </div>
         </Card>
 
-        {/* 버전 이력 */}
         <Card className="p-5">
           <div className="text-sm font-bold text-layout-black mb-3">버전 이력 <span className="text-layout-gray-300 font-normal">(최근 {versions.length})</span></div>
           {versions.length === 0 ? (
@@ -151,13 +235,10 @@ export default function DictSyncPage({ onAuthError }) {
                       {v.env && <Tag tone={ENV_TONE[v.env] || 'gray'}>{v.env}</Tag>}
                     </div>
                     <div className="text-xs text-layout-gray-300 mt-0.5 truncate">
-                      단어 {nf(v.counts?.voca)} · {v.publisher} · {fmtDate(v.published_at)}
-                      {v.message ? ` · ${v.message}` : ''}
+                      단어 {nf(v.counts?.voca)} · {v.publisher} · {fmtDate(v.published_at)}{v.message ? ` · ${v.message}` : ''}
                     </div>
                   </div>
-                  <Button size="sm" variant="secondary" onClick={() => { setApplyTarget(v); setApplyStep(1); }}>
-                    이 버전 받기
-                  </Button>
+                  <Button size="sm" variant="secondary" onClick={() => openApply(v)}>이 버전 받기</Button>
                 </div>
               ))}
             </div>
@@ -169,74 +250,20 @@ export default function DictSyncPage({ onAuthError }) {
         </p>
       </div>
 
-      {/* 올리기 모달 (메모 입력 + 경고) */}
-      <Modal
-        open={pubOpen}
-        onClose={() => !busy && setPubOpen(false)}
-        title="사전 올리기 (발행)"
-        size="md"
-        footer={(
-          <>
-            <button onClick={() => setPubOpen(false)} disabled={busy}
-              className="px-3.5 py-2 text-sm rounded-lg border border-layout-gray-100 text-layout-gray-500 hover:bg-layout-gray-50">취소</button>
-            <Button onClick={() => setPubConfirm(true)} loading={busy}>발행하기</Button>
-          </>
-        )}
-      >
-        <div className="space-y-4">
-          <div className="text-sm text-secondary-yellow-600 bg-secondary-yellow-100 rounded-lg px-3 py-2.5 leading-relaxed">
-            ⚠️ <b>{env.toUpperCase()}</b> 환경의 사전 전체가 objectstore <b>최신본</b>이 됩니다.
-            다른 환경은 '내려받기'로 이걸 받게 됩니다.
-            {status?.stale && (
-              <div className="mt-1.5 text-status-error-600">
-                현재 허브 최신({latest?.version})보다 이 환경이 다릅니다 — 올리면 그 내용을 덮어쓰게 됩니다.
-              </div>
-            )}
-          </div>
-          <Field label="변경 메모 (선택)" hint="무엇을 바꿨는지 적어두면 이력에서 확인됩니다.">
-            <Textarea rows={3} value={pubMsg} onChange={(e) => setPubMsg(e.target.value)}
-              placeholder="예: 토익 단어 120개 추가, 오타 수정" />
-          </Field>
-        </div>
+      {/* 단일 모달 (내부 스텝). 작업 중에는 닫기 불가(dismissible=false). */}
+      <Modal open={!!action} dismissible={!busy} onClose={close} title={modalTitle} size="md" footer={renderFooter()}>
+        {renderModalBody()}
       </Modal>
 
-      {/* 올리기 최종 확인 */}
-      <ConfirmModal
-        open={pubConfirm}
-        title="정말 발행할까요?"
-        tone="primary"
-        confirmText="발행"
-        message={`${env.toUpperCase()} 환경의 사전을 objectstore 최신으로 발행합니다.\n이 작업 후 다른 환경은 이 버전을 받게 됩니다.`}
-        onCancel={() => setPubConfirm(false)}
-        onConfirm={doPublish}
-      />
-
-      {/* 내려받기 1단계 — 경고 */}
-      <ConfirmModal
-        open={applyStep === 1 && !!applyTarget}
-        title={`'${applyTarget?.version}' 버전을 받을까요?`}
-        tone="danger"
-        confirmText="계속"
-        message={
-          `이 환경(${env.toUpperCase()})의 사전이 선택한 버전으로 전체 교체됩니다 (병합 아님).\n` +
-          `대상 단어수: ${nf(applyTarget?.counts?.voca)} / 현재: ${nf(curVoca)}` +
-          (fewer ? `\n\n⚠️ 선택 버전이 현재보다 단어가 ${nf(curVoca - targetCounts)}개 적습니다.` +
-            (isProd ? '\nprod에서는 그 단어를 학습 중인 사용자 데이터에 영향이 갈 수 있습니다.' : '') : '')
-        }
-        onCancel={() => { setApplyStep(0); setApplyTarget(null); }}
-        onConfirm={() => setApplyStep(2)}
-      />
-
-      {/* 내려받기 2단계 — 최종 확인 */}
-      <ConfirmModal
-        open={applyStep === 2 && !!applyTarget}
-        title="되돌릴 수 없습니다. 진행할까요?"
-        tone="danger"
-        confirmText={busy ? '적용 중…' : '적용'}
-        message={`${env.toUpperCase()} 환경의 사전을 '${applyTarget?.version}'(으)로 지금 교체합니다.`}
-        onCancel={() => { setApplyStep(0); setApplyTarget(null); }}
-        onConfirm={doApply}
-      />
+      {/* 작업 중 전체 잠금 — 모든 클릭/이동 차단 + 스피너 */}
+      {busy && (
+        <div className="fixed inset-0 z-[80] bg-layout-black/40 grid place-items-center cursor-wait"
+          onClickCapture={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+          <div className="bg-white rounded-xl px-6 py-5 shadow-xl">
+            <Spinner label={action?.type === 'publish' ? '발행 중… 창을 닫지 마세요' : '적용 중… 창을 닫지 마세요'} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
