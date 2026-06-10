@@ -43,19 +43,32 @@ class Admin(db.Model):
 
     def __init__(self, user_id, password):
         self.user_id = user_id
-        self.password = generate_password_hash(password)
+        self.set_password(password)
+
+    def set_password(self, password):
+        # password 컬럼이 String(128)이라 Werkzeug 3 기본 scrypt(~162자)는 길이 초과로 저장 실패.
+        # pbkdf2:sha256(~88자)로 고정 — 컬럼에 맞고 충분히 안전(기존 계정도 pbkdf2).
+        self.password = generate_password_hash(password, method='pbkdf2:sha256')
 
     def check_password(self, password):
         return check_password_hash(self.password, password)
-        
+
+    # Flask-Login 은 이 값들을 '프로퍼티'로 접근한다. 메서드로 두면 항상 truthy(바운드
+    # 메서드)라 의미가 깨지므로 프로퍼티로 정의한다.
+    @property
     def is_active(self):
         return True
-    
-    def get_id(self):
-        return self.id
-    
+
+    @property
     def is_authenticated(self):
         return True
+
+    @property
+    def is_anonymous(self):
+        return False
+
+    def get_id(self):
+        return str(self.id)
 
 
 class Level(db.Model):

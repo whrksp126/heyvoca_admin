@@ -4,15 +4,18 @@
 React SPA 용으로 JSON 응답을 사용한다. 세션 쿠키 기반이므로 React 는 같은 출처
 /api/* 호출 시 쿠키만으로 인증된다(토큰/ADMIN_API_KEY 브라우저 노출 없음).
 """
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, session
+
 from flask_login import login_user, login_required, logout_user, current_user
 
 from app.models.models import Admin
+from app.extensions import limiter
 
 bp = Blueprint('auth', __name__)
 
 
 @bp.route('/login', methods=['POST'])
+@limiter.limit('10 per minute')  # 브루트포스 완화 (IP당 분당 10회)
 def login():
     data = request.get_json(silent=True) or request.form
     username = (data.get('username') or '').strip()
@@ -20,6 +23,7 @@ def login():
 
     user = Admin.query.filter(Admin.user_id == username).first()
     if user and user.check_password(password):
+        session.permanent = True  # PERMANENT_SESSION_LIFETIME(12h) 적용
         login_user(user)
         return jsonify({'code': 200, 'message': 'ok', 'data': {'user_id': user.user_id}})
 

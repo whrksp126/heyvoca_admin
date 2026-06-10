@@ -1,7 +1,7 @@
 # app/__init__.py
 from flask import Flask, request, jsonify, redirect
 from config import Config
-from app.extensions import db, login_manager
+from app.extensions import db, login_manager, limiter
 from uuid import UUID
 
 def create_app(config_class=Config):
@@ -10,6 +10,7 @@ def create_app(config_class=Config):
 
     db.init_app(app)
     login_manager.init_app(app)
+    limiter.init_app(app)
 
     # 블루프린트 등록
     #   auth      : Admin 세션 로그인/로그아웃 (JSON)
