@@ -45,11 +45,12 @@ class Config:
     BACKEND_URL = os.environ.get('BACKEND_URL', 'http://localhost:5100')
 
     # 세션 쿠키 보안 — HttpOnly(XSS로 쿠키 탈취 방지), SameSite=Lax(CSRF 완화), 12h 만료.
-    # Secure는 HTTPS 환경에서만 — 로컬은 HTTP(localhost:5101)라 켜면 쿠키가 전송 안 돼
-    # 로그인이 깨진다. 서버(dev/stg/prod)는 BACKEND_URL이 https라 자동으로 켜진다.
+    # Secure: 서버(HTTPS)는 .env에 SESSION_COOKIE_SECURE=true. 로컬은 HTTP(localhost:5101)라
+    # 미설정(기본 false) — 켜면 쿠키가 전송 안 돼 로컬 로그인이 깨진다.
+    # (admin→backend 내부 호출은 서버에서도 http라 BACKEND_URL 스킴으론 판별 불가 → 명시 env)
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
-    SESSION_COOKIE_SECURE = os.environ.get('BACKEND_URL', '').startswith('https')
+    SESSION_COOKIE_SECURE = os.environ.get('SESSION_COOKIE_SECURE', 'false').lower() in ('1', 'true', 'yes')
     PERMANENT_SESSION_LIFETIME = timedelta(hours=12)
     ADMIN_API_KEY = os.environ.get('ADMIN_API_KEY', '')
     GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
