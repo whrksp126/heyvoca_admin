@@ -81,3 +81,11 @@ export const getProgress = () => apiGet('/api/progress');                       
 export const getMetrics = (days = 7) => apiGet(`/api/study/metrics${buildQuery({ days })}`); // M4
 export const getHealth = () => apiGet('/api/fsrs/health');                      // M5
 export const getRecentSessions = (limit = 20) => apiGet(`/api/study/recent-sessions${buildQuery({ limit })}`);
+
+// ──────────────────────────────────────────────────────────
+// 사전 동기화 (objectstore 허브: 올리기/내려받기/버전목록)
+// ──────────────────────────────────────────────────────────
+export const getDictStatus = () => apiGet('/api/dict/status');
+export const getDictVersions = () => apiGet('/api/dict/versions');
+export const publishDict = (payload) => apiPost('/api/dict/publish', payload);   // {confirm, message, expected_latest}
+export const applyDict = (payload) => apiPost('/api/dict/apply', payload);        // {confirm, version}
