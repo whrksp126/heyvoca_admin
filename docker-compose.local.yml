@@ -12,9 +12,12 @@ services:
       DB_PASSWORD: voca!@34
       DB_HOST: mysql
       DB_PORT: "3306"
-      DB_NAME: heyvoca
+      DB_NAME: heyvoca_user
       BACKEND_URL: http://nginx:5003
       ADMIN_API_KEY: local-admin-api-key
+      # 로컬 온보딩: 컨테이너 기동 시 admin 콘솔 계정 자동 시드 (local 전용)
+      # → 팀원 누구나 세팅만 하면 admin / admin!@34 로 로그인 가능
+      SEED_LOCAL_ADMIN: "1"
       OPENAI_API_KEY: ""
       GEMINI_API_KEY: ""
       ANTHROPIC_API_KEY: ""
