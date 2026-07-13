@@ -11,6 +11,11 @@ services:
       - heyvoca_prod_heyvoca_prod
       - nginx_proxy
     restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: "0.5"
 
 networks:
   heyvoca_prod_heyvoca_prod:
