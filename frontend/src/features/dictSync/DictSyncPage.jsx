@@ -178,8 +178,8 @@ export default function DictSyncPage({ onAuthError }) {
 
   return (
     <div className="h-full overflow-y-auto thin-scroll">
-      <div className="px-6 py-6 max-w-4xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
+      <div className="px-4 py-4 sm:px-6 sm:py-6 max-w-4xl mx-auto space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-xl font-bold text-layout-black">사전 동기화</h1>
             <p className="text-sm text-layout-gray-300 mt-0.5">objectstore를 허브로 사전 DB(단어·단어장·북스토어)를 올리고 내려받습니다.</p>
@@ -212,7 +212,7 @@ export default function DictSyncPage({ onAuthError }) {
             </div>
           </div>
 
-          <div className="flex gap-2 mt-5 pt-4 border-t border-layout-gray-100">
+          <div className="flex flex-col sm:flex-row gap-2 mt-5 pt-4 border-t border-layout-gray-100">
             <Button onClick={openPublish}>⬆ 올리기 (이 환경 → 최신 발행)</Button>
             <Button variant="secondary" disabled={status?.never_published} onClick={() => openApply(latest)}>
               ⬇ 내려받기 (최신 적용)
@@ -246,7 +246,7 @@ export default function DictSyncPage({ onAuthError }) {
         </Card>
 
         <p className="text-xs text-layout-gray-300">
-          ※ 내려받기/받기는 이 환경 사전을 <b>전체 교체</b>(병합 아님)합니다. 적용 전 자동 백업되지만 신중히 진행하세요.
+          ※ 내려받기/받기는 이 환경 사전을 <b>전체 교체</b>(병합 아님)합니다. 기존 DB는 날짜·시간과 UNUSED 표시가 붙은 dump로 사용자 기기에 보관됩니다.
         </p>
       </div>
 

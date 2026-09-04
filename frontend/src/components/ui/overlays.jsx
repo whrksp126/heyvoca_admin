@@ -35,21 +35,22 @@ export function Modal({ open = true, onClose, title, children, footer, size = 'm
   );
 }
 
-export function Drawer({ open = true, onClose, title, subtitle, children, width = 'max-w-3xl' }) {
+// width: lg 이상에서만 적용되는 최대 너비. lg 미만(모바일/태블릿)은 항상 전체화면.
+export function Drawer({ open = true, onClose, title, subtitle, children, width = 'lg:max-w-3xl' }) {
   useEscClose(onClose);
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-40 flex" role="dialog" aria-modal="true">
-      <div className="flex-1 bg-layout-black/40 animate-fade-in" onClick={onClose} />
-      <aside className={cx('w-full h-full bg-layout-gray-50 border-l border-layout-gray-100 flex flex-col animate-slide-in', width)}>
-        <header className="flex items-center justify-between px-5 py-4 bg-white border-b border-layout-gray-100">
+      <div className="hidden lg:block flex-1 bg-layout-black/40 animate-fade-in" onClick={onClose} />
+      <aside className={cx('w-full h-full bg-layout-gray-50 lg:border-l border-layout-gray-100 flex flex-col animate-slide-in', width)}>
+        <header className="flex items-center justify-between gap-3 px-4 sm:px-5 py-4 bg-white border-b border-layout-gray-100 shrink-0">
           <div className="min-w-0">
             {subtitle && <div className="text-[11px] text-layout-gray-300 uppercase tracking-wide">{subtitle}</div>}
             <div className="text-lg font-bold text-layout-black truncate">{title}</div>
           </div>
-          <button onClick={onClose} className="px-3 py-1.5 text-sm rounded-lg bg-layout-gray-50 hover:bg-layout-gray-100 text-layout-gray-500">닫기</button>
+          <button onClick={onClose} className="shrink-0 px-3 py-1.5 text-sm rounded-lg bg-layout-gray-50 hover:bg-layout-gray-100 text-layout-gray-500">닫기</button>
         </header>
-        <div className="flex-1 overflow-y-auto thin-scroll px-5 py-5 space-y-6">{children}</div>
+        <div className="flex-1 overflow-y-auto thin-scroll px-4 sm:px-5 py-5 space-y-6">{children}</div>
       </aside>
     </div>
   );

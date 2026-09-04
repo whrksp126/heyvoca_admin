@@ -111,8 +111,8 @@ export default function BookstorePage({ onAuthError }) {
     : (b.category || ''));
 
   return (
-    <div className="h-full flex flex-col px-8 py-6 gap-4">
-      <header className="flex items-center justify-between shrink-0">
+    <div className="h-full flex flex-col px-4 py-4 sm:px-8 sm:py-6 gap-3 sm:gap-4">
+      <header className="flex flex-wrap items-center justify-between gap-3 shrink-0">
         <div>
           <h1 className="text-xl font-bold text-layout-black">북스토어 관리</h1>
           <p className="text-sm text-layout-gray-400 mt-0.5">북스토어 상품을 생성·수정·삭제합니다.</p>

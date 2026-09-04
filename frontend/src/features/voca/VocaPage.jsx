@@ -1,4 +1,5 @@
 import React, { useCallback, useRef, useState } from 'react';
+import { CaretRight } from '@phosphor-icons/react';
 import { Button, Input, Spinner, Tag } from '@/components/ui/primitives';
 import { useToast } from '@/lib/toast';
 import { listVoca } from '@/lib/endpoints';
@@ -47,7 +48,7 @@ export default function VocaPage({ onAuthError }) {
   });
 
   return (
-    <div className="h-full flex flex-col px-8 py-6 gap-4">
+    <div className="h-full flex flex-col px-4 py-4 sm:px-8 sm:py-6 gap-3 sm:gap-4">
       {/* 헤더 + 검색 */}
       <div className="flex flex-wrap items-center justify-between gap-3 shrink-0">
         <div>
@@ -79,7 +80,46 @@ export default function VocaPage({ onAuthError }) {
           </div>
         ) : (
           <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto thin-scroll">
-            <table className="w-full table-fixed text-sm">
+            {/* 좁은 화면: 카드 리스트(단어 1개 = 카드 1장) */}
+            <ul className="md:hidden divide-y divide-layout-gray-50">
+              {vocas.map((v) => (
+                <li
+                  key={v.id}
+                  onClick={() => setDetailId(v.id)}
+                  className="flex items-start justify-between gap-2 px-4 py-3.5 active:bg-layout-gray-50 cursor-pointer transition-colors"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline gap-2">
+                      <span className="font-semibold text-layout-black">{v.word}</span>
+                      {v.pronunciation ? (
+                        <span className="text-[11px] text-layout-gray-300">[{v.pronunciation}]</span>
+                      ) : null}
+                    </div>
+                    <div className="mt-1.5 space-y-1">
+                      {v.meanings_detail && v.meanings_detail.length ? (
+                        v.meanings_detail.map((m, i) => (
+                          <div key={m.id ?? i} className="flex items-start gap-1.5 text-sm text-layout-gray-500">
+                            {m.pos ? <Tag tone="gray" className="shrink-0 mt-0.5">{posLabel(m.pos)}</Tag> : null}
+                            <span className="break-words">{m.meaning}</span>
+                          </div>
+                        ))
+                      ) : v.meanings && v.meanings.length ? (
+                        <div className="text-sm text-layout-gray-500">{v.meanings.join(', ')}</div>
+                      ) : (
+                        <div className="text-sm text-layout-gray-300">뜻 없음</div>
+                      )}
+                    </div>
+                    <div className="mt-1.5 text-xs text-layout-gray-300">
+                      {v.examples && v.examples.length ? `예문 ${v.examples.length}개` : '예문 없음'}
+                    </div>
+                  </div>
+                  <CaretRight size={16} className="shrink-0 mt-1 text-layout-gray-300" />
+                </li>
+              ))}
+            </ul>
+
+            {/* 넓은 화면: 테이블 */}
+            <table className="hidden md:table w-full table-fixed text-sm">
               <colgroup>
                 <col className="w-[16%]" />
                 <col className="w-[24%]" />

@@ -95,14 +95,14 @@ export default function VocaBooksPage({ onAuthError }) {
   }, [patchItem, editing]);
 
   return (
-    <div className="h-full flex flex-col px-8 py-6 gap-4">
+    <div className="h-full flex flex-col px-4 py-4 sm:px-8 sm:py-6 gap-3 sm:gap-4">
       {/* 헤더 + 액션 */}
       <header className="flex flex-wrap items-center justify-between gap-3 shrink-0">
         <div>
           <h1 className="text-xl font-bold text-layout-black">단어장 관리</h1>
           <p className="text-sm text-layout-gray-400 mt-0.5">관리자 단어장과 기본 단어장을 통합 관리합니다.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button variant="secondary" onClick={() => setExcelOpen(true)}>엑셀로 단어장 추가</Button>
           <Button onClick={() => setAiOpen(true)}>AI로 단어장 생성</Button>
         </div>
@@ -140,7 +140,36 @@ export default function VocaBooksPage({ onAuthError }) {
           <div className="py-12 text-center text-sm text-layout-gray-300">조건에 맞는 단어장이 없습니다.</div>
         ) : (
           <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto thin-scroll">
-            <table className="w-full text-sm">
+            {/* 좁은 화면: 카드 리스트 */}
+            <ul className="md:hidden divide-y divide-layout-gray-100">
+              {books.map((b) => (
+                <li
+                  key={`${b.book_type}-${b.id}`}
+                  onClick={() => setEditing({ id: b.id, book_type: b.book_type, raw: b })}
+                  className="px-4 py-3.5 active:bg-layout-gray-50 cursor-pointer transition-colors"
+                >
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <Tag tone={b.book_type === 'admin' ? 'purple' : 'blue'}>{b.book_type === 'admin' ? '관리자' : '기본'}</Tag>
+                    {b.source ? <Tag tone={SOURCE_TONE[b.source] || 'gray'}>{b.source}</Tag> : null}
+                    {b.is_registered
+                      ? <Tag tone="green" title={b.bookstore_name || '등록됨'}>등록</Tag>
+                      : null}
+                  </div>
+                  <div className="mt-1.5 font-medium text-layout-black truncate">{b.book_nm}</div>
+                  <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-layout-gray-400">
+                    <span>{b.language || '-'}</span>
+                    <span>{b.category || '-'}</span>
+                    <span>단어 {b.word_count ?? 0}개</span>
+                  </div>
+                  <div className="mt-1.5 text-[11px] text-layout-gray-300 truncate">
+                    {b.username || '-'} · {formatDateShort(b.updated_at)}
+                  </div>
+                </li>
+              ))}
+            </ul>
+
+            {/* 넓은 화면: 테이블 */}
+            <table className="hidden md:table w-full text-sm">
               <thead className="sticky top-0 z-10 bg-layout-gray-50">
                 <tr className="text-layout-gray-400 text-xs">
                   {COLUMNS.map((col) => {

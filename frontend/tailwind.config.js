@@ -64,10 +64,12 @@ module.exports = {
       borderRadius: { DEFAULT: '8px' },
       keyframes: {
         slideIn: { '0%': { transform: 'translateX(100%)' }, '100%': { transform: 'translateX(0)' } },
+        slideInLeft: { '0%': { transform: 'translateX(-100%)' }, '100%': { transform: 'translateX(0)' } },
         fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
       },
       animation: {
         'slide-in': 'slideIn 0.25s ease-out forwards',
+        'slide-in-left': 'slideInLeft 0.2s ease-out forwards',
         'fade-in': 'fadeIn 0.15s ease-out forwards',
       },
     },

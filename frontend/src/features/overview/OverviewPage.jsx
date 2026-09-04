@@ -52,8 +52,8 @@ export default function OverviewPage({ onAuthError }) {
   if (loading) return <Spinner label="대시보드 불러오는 중…" />;
 
   return (
-    <div className="h-full overflow-y-auto thin-scroll px-8 py-6 space-y-6">
-      <header className="flex items-center justify-between">
+    <div className="h-full overflow-y-auto thin-scroll px-4 py-4 sm:px-8 sm:py-6 space-y-6">
+      <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-layout-black">개요</h1>
           <p className="text-sm text-layout-gray-300 mt-0.5">
