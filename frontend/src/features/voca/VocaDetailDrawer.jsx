@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Drawer } from '@/components/ui/overlays';
-import { Button, Field, Input, Textarea, Spinner } from '@/components/ui/primitives';
+import { Button, Field, Input, Textarea, Spinner, Tag } from '@/components/ui/primitives';
 import { getVoca, patchVoca } from '@/lib/endpoints';
 import { ApiError } from '@/lib/api';
 import EmphasisField from '../vocaBooks/EmphasisField';
+import { posLabel } from './posLabels';
 
 // 난이도 옵션 (백엔드 level 컬럼 — 숫자/문자 자유. 미지정 가능)
 const LEVEL_OPTIONS = ['', '1', '2', '3', '4', '5'];
@@ -49,7 +50,7 @@ export default function VocaDetailDrawer({
           pronunciation: d.pronunciation || '',
           verb_forms: d.verb_forms || '',
           level: d.level != null ? String(d.level) : '',
-          meanings: (d.meanings || []).map((m) => ({ id: m.id, meaning: m.meaning || '' })),
+          meanings: (d.meanings || []).map((m) => ({ id: m.id, meaning: m.meaning || '', pos: m.pos ?? null })),
           examples: (d.examples || []).map((ex) => ({
             id: ex.id, exam_en: ex.exam_en || '', exam_ko: ex.exam_ko || '',
           })),
@@ -67,7 +68,7 @@ export default function VocaDetailDrawer({
   const setField = (key, value) => setForm((f) => ({ ...f, [key]: value }));
 
   // ── 뜻 목록 편집 ──
-  const addMeaning = () => setForm((f) => ({ ...f, meanings: [...f.meanings, { id: null, meaning: '' }] }));
+  const addMeaning = () => setForm((f) => ({ ...f, meanings: [...f.meanings, { id: null, meaning: '', pos: null }] }));
   const updateMeaning = (idx, value) =>
     setForm((f) => ({ ...f, meanings: f.meanings.map((m, i) => (i === idx ? { ...m, meaning: value } : m)) }));
   const removeMeaning = (idx) =>
@@ -92,7 +93,7 @@ export default function VocaDetailDrawer({
         verb_forms: form.verb_forms.trim(),
         level: form.level || '',
         // 빈 항목은 백엔드가 무시하므로 그대로 전달
-        meanings: form.meanings.map((m) => ({ id: m.id, meaning: m.meaning })),
+        meanings: form.meanings.map((m) => ({ id: m.id, meaning: m.meaning, pos: m.pos ?? null })),
         examples: form.examples.map((ex) => ({ id: ex.id, exam_en: ex.exam_en, exam_ko: ex.exam_ko })),
       };
       const res = await patchVoca(vocaId, patch);
@@ -170,6 +171,11 @@ export default function VocaDetailDrawer({
                 {form.meanings.map((m, idx) => (
                   <div key={m.id ?? `new-${idx}`} className="flex items-center gap-2">
                     <span className="text-xs text-layout-gray-300 w-5 text-right">{idx + 1}</span>
+                    {m.pos ? (
+                      <Tag tone="gray" className="shrink-0">{posLabel(m.pos)}</Tag>
+                    ) : (
+                      <Tag tone="gray" className="shrink-0 opacity-40">미지정</Tag>
+                    )}
                     <Input
                       value={m.meaning}
                       onChange={(e) => updateMeaning(idx, e.target.value)}

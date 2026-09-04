@@ -1,11 +1,12 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { Button, Input, Spinner } from '@/components/ui/primitives';
+import { Button, Input, Spinner, Tag } from '@/components/ui/primitives';
 import { useToast } from '@/lib/toast';
 import { listVoca } from '@/lib/endpoints';
 import { useInfiniteList } from '@/lib/useInfiniteList';
 import { getList, setList } from '@/lib/listCache';
 import { useDebouncedValue } from './useDebouncedValue';
 import VocaDetailDrawer from './VocaDetailDrawer';
+import { posLabel } from './posLabels';
 
 const CACHE_KEY = 'voca';
 
@@ -107,9 +108,20 @@ export default function VocaPage({ onAuthError }) {
                       ) : null}
                     </td>
                     <td className="px-4 py-3 text-layout-gray-500 break-words">
-                      {v.meanings && v.meanings.length
-                        ? v.meanings.join(', ')
-                        : <span className="text-layout-gray-300">뜻 없음</span>}
+                      {v.meanings_detail && v.meanings_detail.length ? (
+                        <div className="flex flex-col gap-1">
+                          {v.meanings_detail.map((m, i) => (
+                            <div key={m.id ?? i} className="flex items-center gap-1.5">
+                              {m.pos ? <Tag tone="gray" className="shrink-0">{posLabel(m.pos)}</Tag> : null}
+                              <span className="break-words">{m.meaning}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : v.meanings && v.meanings.length ? (
+                        v.meanings.join(', ')
+                      ) : (
+                        <span className="text-layout-gray-300">뜻 없음</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-layout-gray-500 break-words space-y-1">
                       {v.examples && v.examples.length
