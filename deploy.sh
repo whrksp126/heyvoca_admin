@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # heyvoca_admin 배포 스크립트
-# 사용법: ./deploy.sh [dev|stg|prod]
+# 사용법: ./deploy.sh [dev|prod]
 #
 # 배포 방식: 홈서버에서 git pull → docker compose up --build
 #   (멀티스테이지 Dockerfile 이 서버에서 node 로 vite 빌드 후 python 런타임 구성)
@@ -19,7 +19,7 @@ SSH_PORT="222"
 REMOTE_DIR="/srv/projects/heyvoca_admin"
 
 if [[ -z "$ENV" ]]; then
-    echo "사용법: ./deploy.sh [dev|stg|prod]"
+    echo "사용법: ./deploy.sh [dev|prod]"
     exit 1
 fi
 
@@ -28,16 +28,12 @@ case $ENV in
         COMPOSE_FILE="docker-compose.dev.yml"
         PROJECT_NAME="heyvoca_admin_dev"
         ;;
-    stg)
-        COMPOSE_FILE="docker-compose.stg.yml"
-        PROJECT_NAME="heyvoca_admin_stg"
-        ;;
     prod)
         COMPOSE_FILE="docker-compose.yml"
         PROJECT_NAME="heyvoca_admin_prod"
         ;;
     *)
-        echo "잘못된 환경입니다: $ENV (dev, stg, prod 중 하나를 입력하세요)"
+        echo "잘못된 환경입니다: $ENV (dev, prod 중 하나를 입력하세요)"
         exit 1
         ;;
 esac
@@ -52,7 +48,7 @@ ssh -i "$SSH_KEY" -p "$SSH_PORT" "${SSH_USER}@${SSH_HOST}" "
     git pull
     echo '>>> docker build & up...'
     # --renew-anon-volumes: dev 의 SPA 익명 볼륨(/app/app/static/spa)이 옛 빌드를 붙들지 않게
-    #   매 배포마다 새 이미지의 빌드 산출물로 갱신. (stg/prod 는 익명 볼륨 없어 무해)
+    #   매 배포마다 새 이미지의 빌드 산출물로 갱신. (prod 는 익명 볼륨 없어 무해)
     docker compose -p ${PROJECT_NAME} -f ${COMPOSE_FILE} up --build -d --force-recreate --renew-anon-volumes admin
     echo '>>> nginx reload (IP 캐시 갱신)...'
     docker exec nginx_proxy nginx -s reload

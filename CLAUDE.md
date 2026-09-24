@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-heyvoca 어드민 (Flask 3 백엔드 + React SPA 프론트). 자체 비즈니스 로직은 거의 없고, heyvoca_back 의 `/admin/*` API 를 호출하는 thin client (Flask 프록시가 `X-Admin-API-Key` 주입 → 키 브라우저 비노출). 배포는 ghmate 홈서버 Docker (dev/stg/prod) — `./deploy.sh dev|stg|prod`.
+heyvoca 어드민 (Flask 3 백엔드 + React SPA 프론트). 자체 비즈니스 로직은 거의 없고, heyvoca_back 의 `/admin/*` API 를 호출하는 thin client (Flask 프록시가 `X-Admin-API-Key` 주입 → 키 브라우저 비노출). 배포는 ghmate 홈서버 Docker (dev/prod) — `./deploy.sh dev|prod`. (stg 는 2026-09-24 폐지)
 
 ---
 
@@ -15,7 +15,6 @@ docker compose -f docker-compose.local.yml up --build -d
 
 # 배포 (홈서버 docker — heyvoca_service 와 동일 방식: SSH → git pull → up --build)
 ./deploy.sh dev
-./deploy.sh stg
 ./deploy.sh prod
 ```
 
@@ -57,8 +56,8 @@ heyvoca_admin/
 ├── run.py
 ├── requirements.txt
 ├── Dockerfile / Dockerfile.local
-├── docker-compose.{local,dev,stg}.yml / docker-compose.yml(prod)
-└── deploy.sh                # 홈서버 배포 (dev/stg/prod)
+├── docker-compose.{local,dev}.yml / docker-compose.yml(prod)
+└── deploy.sh                # 홈서버 배포 (dev/prod)
 ```
 
 ### 인증 흐름
@@ -86,7 +85,7 @@ ANTHROPIC_API_KEY=...
 ```
 
 - 로컬 DB 포트 기본 `3310` (heyvoca_service local docker-compose 와 동일)
-- `.env*` 는 gitignore. 서버는 각 환경 `.env.{dev,stg}` / `.env`(prod) 를 서버에 배치
+- `.env*` 는 gitignore. 서버는 각 환경 `.env.dev` / `.env`(prod) 를 서버에 배치
 
 ---
 
@@ -100,17 +99,16 @@ ANTHROPIC_API_KEY=...
 
 ## 배포 (홈서버 Docker)
 
-heyvoca_service 와 동일하게 ghmate 홈서버 Docker 로 dev/stg/prod 운영. `deploy.sh` 가 SSH → git pull → 빌드까지 자동.
+heyvoca_service 와 동일하게 ghmate 홈서버 Docker 로 dev/prod 운영(stg 는 2026-09-24 폐지). `deploy.sh` 가 SSH → git pull → 빌드까지 자동.
 
 ```bash
 ./deploy.sh dev    # SSH → /srv/projects/heyvoca_admin git pull → docker compose -p heyvoca_admin_dev up --build -d admin → nginx reload → 부팅 헬스체크
-./deploy.sh stg
 ./deploy.sh prod   # compose 파일은 docker-compose.yml
 ```
 
 - 서버 경로: `/srv/projects/heyvoca_admin` (git `main`)
-- 컨테이너: `heyvoca_admin_{dev,stg,prod}` (gunicorn `run:app`, 내부 :5000), 글로벌 `nginx_proxy` 네트워크 조인
-- 도메인: `dev-heyvoca-admin` / `stg-heyvoca-admin` / `heyvoca-admin.ghmate.com` (nginx-proxy/conf.d/heyvoca.conf)
+- 컨테이너: `heyvoca_admin_{dev,prod}` (gunicorn `run:app`, 내부 :5000), 글로벌 `nginx_proxy` 네트워크 조인
+- 도메인: `dev-heyvoca-admin` / `heyvoca-admin.ghmate.com` (nginx-proxy/conf.d/heyvoca.conf)
 - 멀티스테이지 Dockerfile 이 **서버에서** node 로 vite 빌드 후 python 런타임 구성 (로컬 npm 빌드 불필요)
 - SSH: `ssh -i ~/.ssh/ghmate_server -p 222 ghmate@ghmate.iptime.org`
 
