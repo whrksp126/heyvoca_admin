@@ -9,6 +9,7 @@ import VocaBooksPage from './features/vocaBooks/VocaBooksPage';
 import VocaPage from './features/voca/VocaPage';
 import BookstorePage from './features/bookstore/BookstorePage';
 import DictSyncPage from './features/dictSync/DictSyncPage';
+import ReportsPage from './features/reports/ReportsPage';
 
 export default function App() {
   const [status, setStatus] = useState('loading'); // loading | out | in
@@ -50,6 +51,7 @@ export default function App() {
         <Route path="/voca" element={<VocaPage onAuthError={handleLogout} />} />
         <Route path="/bookstore" element={<BookstorePage onAuthError={handleLogout} />} />
         <Route path="/dict-sync" element={<DictSyncPage onAuthError={handleLogout} />} />
+        <Route path="/reports" element={<ReportsPage onAuthError={handleLogout} />} />
         <Route path="*" element={<Navigate to="/overview" replace />} />
       </Routes>
     </AdminShell>
