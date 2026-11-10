@@ -10,3 +10,7 @@ export const getReportSummary = (filters = {}) =>
 export const getReport = (id) => apiGet(`/api/reports/${id}`);
 export const patchReport = (id, patch) => apiPatch(`/api/reports/${id}`, patch);
 export const bulkPatchReports = (payload) => apiPatch('/api/reports/bulk', payload);
+// 사전 추가 요청 — 단어별 묶음(요청자 수 많은 순) / 묶음 상태 일괄 변경
+export const listDictMissing = ({ page = 1, perPage = 50, ...filters } = {}) =>
+  apiGet(`/api/reports/dict-missing${buildQuery(clean({ ...filters, page, per_page: perPage }))}`);
+export const patchDictMissing = (payload) => apiPatch('/api/reports/dict-missing', payload);

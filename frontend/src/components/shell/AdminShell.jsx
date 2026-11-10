@@ -3,7 +3,7 @@
 import React, { useRef, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
-  ChartLineUp, Books, Translate, Storefront, ArrowsClockwise, Flag, SignOut, List, X,
+  ChartLineUp, Books, Translate, Storefront, ArrowsClockwise, Flag, UsersThree, SignOut, List, X,
 } from '@phosphor-icons/react';
 import { ScrollContext } from '@/lib/scrollContext';
 
@@ -13,7 +13,8 @@ const NAV = [
   { to: '/voca', label: '단어 관리', icon: Translate },
   { to: '/bookstore', label: '북스토어', icon: Storefront },
   { to: '/dict-sync', label: '사전 동기화', icon: ArrowsClockwise },
-  { to: '/reports', label: '오류 신고', icon: Flag },
+  { to: '/reports', label: '신고 관리', icon: Flag },
+  { to: '/users', label: '유저 관리', icon: UsersThree },
 ];
 
 export default function AdminShell({ userId, onLogout, children }) {

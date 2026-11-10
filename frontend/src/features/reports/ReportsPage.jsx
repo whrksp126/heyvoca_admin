@@ -1,34 +1,65 @@
-// 오류 신고 — 앱 학습 중 사용자가 보낸 데이터 오류 신고(heyvoca_back app/routes/content_report.py).
+// 신고 관리 — 앱 학습 중 사용자가 보낸 데이터 오류 신고 + 사전 없는 단어 '사전 추가 요청'
+// (heyvoca_back app/routes/content_report.py). 탭: 학습 중 오류 신고(kind=content) / 사전 추가 요청(단어별 묶음).
 // 목록·필터 / 신고 많은 단어 묶음 / 상세(신고 순간 화면 스냅샷) / 단어 편집 Drawer 로 바로 이동 / 상태 변경.
 // AI 일괄 처리는 heyvoca_back/scripts/export_content_reports.py (heyvoca_service/docs/CONTENT_REPORT.md).
 import React, { useCallback, useEffect, useState } from 'react';
-import { PencilSimple } from '@phosphor-icons/react';
+import { PencilSimple, Flag, BookOpenText } from '@phosphor-icons/react';
 import { Button, Card, Input, Select, Spinner, Tag, Textarea, Field } from '@/components/ui/primitives';
 import { Drawer } from '@/components/ui/overlays';
 import { ApiError } from '@/lib/api';
 import { useToast } from '@/lib/toast';
 import VocaDetailDrawer from '@/features/voca/VocaDetailDrawer';
 import { listReports, getReportSummary, getReport, patchReport, bulkPatchReports } from './api';
+import DictMissingPanel from './DictMissingPanel';
+import { STATUS_LABEL, STATUS_TONE, fmtDate } from './shared';
 
 const REASON_LABEL = {
   meaning: '뜻이 틀림', example: '예문이 이상함', audio: '발음·음성 문제',
   grading: '정답 판정이 틀림', question: '문제가 이상함', other: '기타',
 };
-const STATUS_LABEL = { open: '미처리', resolved: '수정 완료', rejected: '기각' };
-const STATUS_TONE = { open: 'red', resolved: 'green', rejected: 'gray' };
 const LANG_LABEL = { en: '영어', ja: '일본어', script: '글자', custom: '직접 추가' };
 
-function fmtDate(iso) {
-  if (!iso) return '-';
-  // 서버는 UTC naive ISO — KST 로 보여 준다
-  const d = new Date(iso.endsWith('Z') ? iso : `${iso}Z`);
-  const p = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
-}
+
+const TABS = [
+  { key: 'content', label: '학습 중 오류 신고', icon: Flag },
+  { key: 'dict_missing', label: '사전 추가 요청', icon: BookOpenText },
+];
 
 export default function ReportsPage({ onAuthError }) {
+  const [tab, setTab] = useState(() => {
+    try { return sessionStorage.getItem('reports.tab') || 'content'; } catch { return 'content'; }
+  });
+  const pick = (k) => {
+    setTab(k);
+    try { sessionStorage.setItem('reports.tab', k); } catch { /* noop */ }
+  };
+  return (
+    <div className="h-full overflow-y-auto px-4 py-4 sm:px-8 sm:py-6 space-y-4">
+      <div>
+        <h2 className="text-xl font-bold text-layout-black">신고 관리</h2>
+        <div className="mt-3 flex gap-1 border-b border-layout-gray-100">
+          {TABS.map(({ key, label, icon: Icon }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => pick(key)}
+              className={`flex items-center gap-1.5 px-3 py-2 -mb-px border-b-2 text-sm font-semibold ${tab === key ? 'border-primary-main-600 text-primary-main-600' : 'border-transparent text-layout-gray-400 hover:text-layout-gray-500'}`}
+            >
+              <Icon size={16} weight="bold" /> {label}
+            </button>
+          ))}
+        </div>
+      </div>
+      {tab === 'content'
+        ? <ContentReports onAuthError={onAuthError} />
+        : <DictMissingPanel onAuthError={onAuthError} />}
+    </div>
+  );
+}
+
+function ContentReports({ onAuthError }) {
   const toast = useToast();
-  const [filters, setFilters] = useState({ status: 'open', reason: '', lang: '', from: '', to: '', q: '', voca_id: '' });
+  const [filters, setFilters] = useState({ kind: 'content', sort: '', status: 'open', reason: '', lang: '', from: '', to: '', q: '', voca_id: '' });
   const [page, setPage] = useState(1);
   const [list, setList] = useState({ items: [], total: 0, has_more: false });
   const [summary, setSummary] = useState(null);
@@ -75,10 +106,9 @@ export default function ReportsPage({ onAuthError }) {
   const items = list.items || [];
 
   return (
-    <div className="h-full overflow-y-auto px-4 py-4 sm:px-8 sm:py-6 space-y-4">
+    <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold text-layout-black">오류 신고</h2>
           <p className="text-sm text-layout-gray-300 mt-0.5">
             학습 중 사용자가 보낸 뜻·예문·발음·채점 오류 신고. 조건에 맞는 {list.total?.toLocaleString?.() ?? 0}건
           </p>
@@ -93,7 +123,11 @@ export default function ReportsPage({ onAuthError }) {
       </div>
 
       {/* 필터 */}
-      <Card className="p-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+      <Card className="p-3 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+        <Select value={filters.sort} onChange={(e) => setFilter('sort', e.target.value)} aria-label="정렬">
+          <option value="">최신순</option>
+          <option value="count">같은 단어 신고 많은 순</option>
+        </Select>
         <Select value={filters.status} onChange={(e) => setFilter('status', e.target.value)} aria-label="상태">
           <option value="">상태 전체</option>
           {Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
@@ -141,9 +175,9 @@ export default function ReportsPage({ onAuthError }) {
       {checked.size > 0 && (
         <div className="flex items-center gap-2">
           <span className="text-sm text-layout-gray-400">{checked.size}건 선택</span>
-          <Button size="sm" onClick={() => bulk('resolved')}>수정 완료</Button>
-          <Button size="sm" variant="secondary" onClick={() => bulk('rejected')}>기각</Button>
-          <Button size="sm" variant="ghost" onClick={() => bulk('open')}>미처리로</Button>
+          <Button size="sm" onClick={() => bulk('resolved')}>처리</Button>
+          <Button size="sm" variant="secondary" onClick={() => bulk('rejected')}>반려</Button>
+          <Button size="sm" variant="ghost" onClick={() => bulk('open')}>대기로</Button>
         </div>
       )}
 
@@ -174,6 +208,7 @@ export default function ReportsPage({ onAuthError }) {
                     <td className="px-3 py-2 whitespace-nowrap text-layout-gray-400">{fmtDate(r.created_at)}</td>
                     <td className="px-3 py-2">
                       <span className="font-semibold text-layout-black">{r.word || r.target_key || '-'}</span>
+                      {r.target_count > 1 && <span className="ml-1 text-xs font-bold text-primary-main-600">{r.target_count}건</span>}
                       <span className="ml-1.5 text-[11px] text-layout-gray-300">{LANG_LABEL[r.dict_lang] || r.dict_lang || ''}{r.voca_id ? ` #${r.voca_id}` : ''}</span>
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap"><Tag tone="pink">{r.reason_label}</Tag></td>
@@ -343,9 +378,9 @@ function ReportDetailDrawer({ id, onClose, onChanged, onEditVoca, handleErr, toa
             <Textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="무엇을 고쳤는지 / 기각 사유" />
           </Field>
           <div className="flex flex-wrap gap-2">
-            <Button loading={saving} onClick={() => save('resolved')}>수정 완료</Button>
-            <Button variant="secondary" loading={saving} onClick={() => save('rejected')}>기각</Button>
-            {r.status !== 'open' && <Button variant="ghost" loading={saving} onClick={() => save('open')}>미처리로 되돌리기</Button>}
+            <Button loading={saving} onClick={() => save('resolved')}>처리</Button>
+            <Button variant="secondary" loading={saving} onClick={() => save('rejected')}>반려</Button>
+            {r.status !== 'open' && <Button variant="ghost" loading={saving} onClick={() => save('open')}>대기로 되돌리기</Button>}
           </div>
         </div>
       )}
