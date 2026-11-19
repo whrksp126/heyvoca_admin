@@ -7,6 +7,7 @@ import { Modal } from '@/components/ui/overlays';
 import { ApiError } from '@/lib/api';
 import { useToast } from '@/lib/toast';
 import { LineChart, StackedBars, DistBars, SERIES_COLORS } from './charts';
+import UserDetailDrawer from './UserDetailDrawer';
 import {
   getUserStatsOverview, listStatUsers, listExcludedEmails, addExcludedEmail, deleteExcludedEmail,
 } from './api';
@@ -206,7 +207,7 @@ export default function UserStatsPage({ onAuthError }) {
         </>
       )}
 
-      <UserTable handleErr={handleErr} />
+      <UserTable handleErr={handleErr} onAuthError={onAuthError} toast={toast} />
 
       {showExcluded && (
         <ExcludedModal
@@ -230,7 +231,8 @@ const COLUMNS = [
   { key: 'study_days', label: '학습 일수', sortable: true },
 ];
 
-function UserTable({ handleErr }) {
+function UserTable({ handleErr, onAuthError, toast }) {
+  const [detail, setDetail] = useState(null); // { id, email } — 상세 드로어
   const [q, setQ] = useState('');
   const [debounced, setDebounced] = useState('');
   const [real, setReal] = useState('');
@@ -295,7 +297,12 @@ function UserTable({ handleErr }) {
             </thead>
             <tbody>
               {list.items.map((u) => (
-                <tr key={u.id} className="border-t border-layout-gray-100">
+                <tr
+                  key={u.id}
+                  onClick={() => setDetail({ id: u.id, email: u.email })}
+                  className="border-t border-layout-gray-100 cursor-pointer hover:bg-layout-gray-50"
+                  title="눌러서 학습 기록 상세 보기"
+                >
                   <td className="px-3 py-2 max-w-[260px]">
                     <div className="truncate font-medium text-layout-black">{u.email}</div>
                     <div className="text-[11px] text-layout-gray-300 truncate">
@@ -324,6 +331,13 @@ function UserTable({ handleErr }) {
           <Button size="sm" variant="secondary" disabled={!list.has_more} onClick={() => setPage((p) => p + 1)}>다음</Button>
         </div>
       )}
+      <UserDetailDrawer
+        userId={detail?.id || null}
+        title={detail?.email}
+        onClose={() => setDetail(null)}
+        onAuthError={onAuthError}
+        toast={toast}
+      />
     </Card>
   );
 }

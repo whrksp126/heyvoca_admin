@@ -6,3 +6,9 @@ export const listStatUsers = (params = {}) => apiGet(`/api/user-stats/users${bui
 export const listExcludedEmails = () => apiGet('/api/user-stats/excluded');
 export const addExcludedEmail = (email, memo) => apiPost('/api/user-stats/excluded', { email, memo });
 export const deleteExcludedEmail = (id) => apiDelete(`/api/user-stats/excluded/${id}`);
+
+// 사용자 학습 기록 상세 (읽기 전용) — heyvoca_back app/services/admin_user_detail.py
+export const getUserDetail = (userId, params = {}) =>
+  apiGet(`/api/users/${encodeURIComponent(userId)}/detail${buildQuery(params)}`);
+export const getUserHistory = (userId, params = {}) =>
+  apiGet(`/api/users/${encodeURIComponent(userId)}/history${buildQuery(params)}`);
