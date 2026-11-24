@@ -15,8 +15,6 @@ const buildForm = (bs) => ({
   gem: bs?.gem ?? 10,
   category: bs?.category || '',
   category_id: bs?.category_id ?? '',
-  level_id: bs?.level_id ?? 1,
-  level: bs?.level || '',
   downloads: bs?.downloads ?? 0,
   color: parseColor(bs?.color) || { ...DEFAULT_THEME },
 });
@@ -50,8 +48,6 @@ export default function BookstoreInlineForm({ book, bookstore, defaultName, defa
     gem: Number(form.gem) || 0,
     category: form.category || null,
     category_id: form.category_id === '' ? null : Number(form.category_id),
-    level_id: Number(form.level_id),
-    level: form.level || null,
     downloads: Number(form.downloads) || 0,
     color: JSON.stringify(form.color),
   });
@@ -113,17 +109,11 @@ export default function BookstoreInlineForm({ book, bookstore, defaultName, defa
         <Field label="가격 (gem)">
           <Input type="number" min="0" value={form.gem} onChange={(e) => change('gem', e.target.value)} />
         </Field>
-        <Field label="레벨 ID">
-          <Input type="number" min="0" value={form.level_id} onChange={(e) => change('level_id', e.target.value)} />
-        </Field>
         <Field label="카테고리">
           <Input value={form.category} onChange={(e) => change('category', e.target.value)} />
         </Field>
         <Field label="카테고리 ID (선택)">
           <Input type="number" min="0" value={form.category_id} onChange={(e) => change('category_id', e.target.value)} placeholder="선택" />
-        </Field>
-        <Field label="레벨 라벨">
-          <Input value={form.level} onChange={(e) => change('level', e.target.value)} placeholder="예: 초급" />
         </Field>
         <Field label="다운로드">
           <Input type="number" min="0" value={form.downloads} onChange={(e) => change('downloads', e.target.value)} />

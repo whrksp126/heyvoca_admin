@@ -1,7 +1,7 @@
 // 북스토어 생성(T4) / 수정(T5) 폼 모달.
-// - 생성: name, level_id(필수), gem, category, category_id, 노출여부, 색상, 연결 단어장 지정
+// - 생성: name, gem, category, category_id, 노출여부, 색상, 연결 단어장 지정
 // - 수정: name, color, is_visible, gem, category_id (백엔드가 허용하는 필드만)
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Modal } from '@/components/ui/overlays';
 import { Button, Field, Input, Select, ToggleSwitch } from '@/components/ui/primitives';
 import ColorThemePicker, { COLOR_THEMES } from '@/components/ui/ColorThemePicker';
@@ -37,7 +37,6 @@ export default function BookstoreFormModal({ open, mode, initial, levels, catego
   const isEdit = mode === 'edit';
 
   const [name, setName] = useState('');
-  const [levelId, setLevelId] = useState('');
   const [gem, setGem] = useState('0');
   const [order, setOrder] = useState('0');
   const [category, setCategory] = useState('');
@@ -55,7 +54,6 @@ export default function BookstoreFormModal({ open, mode, initial, levels, catego
     setErrors({});
     if (isEdit && initial) {
       setName(initial.name || '');
-      setLevelId(initial.level_id != null ? String(initial.level_id) : '');
       setGem(String(initial.gem ?? 0));
       setOrder(String(initial.downloads ?? 0));
       setCategory(initial.category || '');
@@ -71,7 +69,6 @@ export default function BookstoreFormModal({ open, mode, initial, levels, catego
       }
     } else {
       setName('');
-      setLevelId('');
       setGem('0');
       setOrder('0');
       setCategory('');
@@ -83,15 +80,9 @@ export default function BookstoreFormModal({ open, mode, initial, levels, catego
     }
   }, [open, isEdit, initial]);
 
-  const selectedLevel = useMemo(
-    () => levels.find((l) => String(l.id) === String(levelId)),
-    [levels, levelId],
-  );
-
   const validate = () => {
     const e = {};
     if (!name.trim()) e.name = '이름을 입력하세요.';
-    if (!isEdit && !levelId) e.levelId = '레벨을 선택하세요.';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -113,8 +104,6 @@ export default function BookstoreFormModal({ open, mode, initial, levels, catego
       } else {
         const payload = {
           name: name.trim(),
-          level_id: Number(levelId),
-          level_name: selectedLevel?.level_name,
           gem: Number(gem) || 0,
           order: Number(order) || 0,
           category: category.trim(),
@@ -163,22 +152,6 @@ export default function BookstoreFormModal({ open, mode, initial, levels, catego
         </Field>
 
         <div className="grid grid-cols-2 gap-4">
-          <Field
-            label="레벨"
-            required={!isEdit}
-            error={errors.levelId}
-            hint={isEdit ? '레벨은 생성 후 변경할 수 없습니다.' : undefined}
-          >
-            <Select value={levelId} onChange={(e) => setLevelId(e.target.value)} disabled={isEdit}>
-              <option value="">선택</option>
-              {levels.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.level_name ? `${l.level_name} (Lv.${l.level})` : `Lv.${l.level}`}
-                </option>
-              ))}
-            </Select>
-          </Field>
-
           <Field label="보석 가격 (gem)">
             <Input type="number" min="0" value={gem} onChange={(e) => setGem(e.target.value)} />
           </Field>
